@@ -1,0 +1,8 @@
+Debug
+Release
+xlog.sdf
+xlog.v12.suo
+.svnignore
+tests/.idea
+tests/lib/*.php~
+tests/*.php~
