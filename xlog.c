@@ -25,11 +25,12 @@
 #include "php.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
-#include "php_xlog.h"
-#include "redis.h"
-#include "mail.h"
 #include "ext/standard/php_smart_str.h"
 #include "ext/standard/php_var.h"
+#include "php_xlog.h"
+#include "common.h"
+#include "redis.h"
+#include "mail.h"
 
 
 /* If you declare any globals in php_xlog.h uncomment this:
@@ -56,13 +57,30 @@ ZEND_GET_MODULE(xlog)
 #endif
 
 /* {{{ PHP_INI
- */
-/* Remove comments and fill if you need to have entries in php.ini
+	*/
+	/* Remove comments and fill if you need to have entries in php.ini
+		*/
 PHP_INI_BEGIN()
-    STD_PHP_INI_ENTRY("xlog.global_value",      "42", PHP_INI_ALL, OnUpdateLong, global_value, zend_xlog_globals, xlog_globals)
-    STD_PHP_INI_ENTRY("xlog.global_string", "foobar", PHP_INI_ALL, OnUpdateString, global_string, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_smtp", "", PHP_INI_ALL, OnUpdateString, mail_smtp, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_port", "25", PHP_INI_ALL, OnUpdateLongGEZero, mail_port, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_username", "", PHP_INI_ALL, OnUpdateString, mail_username, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_password", "", PHP_INI_ALL, OnUpdateString, mail_password, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_ssl", "0", PHP_INI_ALL, OnUpdateBool, mail_ssl, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_from", "",PHP_INI_ALL,OnUpdateString,mail_from,zend_xlog_globals,xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_from_name", "", PHP_INI_ALL, OnUpdateString, mail_from_name, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_to", "", PHP_INI_ALL, OnUpdateString, mail_to, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.send_mail", "0", PHP_INI_ALL, OnUpdateBool, send_mail, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.send_mail_level", "",PHP_INI_ALL,OnUpdateString,send_mail_level,zend_xlog_globals,xlog_globals)
+STD_PHP_INI_ENTRY("xlog.trace_error", "0", PHP_INI_ALL, OnUpdateBool, trace_error, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.trace_exception", "0", PHP_INI_ALL, OnUpdateBool, trace_exception, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.file_enable", "1", PHP_INI_ALL, OnUpdateBool, file_enable, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.redis_enable", "0", PHP_INI_ALL, OnUpdateBool, redis_enable, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.redis_host", "", PHP_INI_ALL, OnUpdateString, redis_host, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.redis_port", "6379", PHP_INI_ALL, OnUpdateLongGEZero, redis_port, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.redis_auth", "", PHP_INI_ALL, OnUpdateString, redis_auth, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.redis_db", "0", PHP_INI_ALL, OnUpdateLong, redis_db, zend_xlog_globals, xlog_globals)
 PHP_INI_END()
-*/
+
 /* }}} */
 
 /* {{{ php_xlog_init_globals
@@ -89,8 +107,9 @@ PHP_GINIT_FUNCTION(xlog)
 PHP_MINIT_FUNCTION(xlog)
 {
 	/* If you have INI entries, uncomment these lines 
-	REGISTER_INI_ENTRIES();
 	*/
+	REGISTER_INI_ENTRIES();
+	init_error_hooks(TSRMLS_C);
 	return SUCCESS;
 }
 /* }}} */
@@ -100,8 +119,9 @@ PHP_MINIT_FUNCTION(xlog)
 PHP_MSHUTDOWN_FUNCTION(xlog)
 {
 	/* uncomment this line if you have INI entries
-	UNREGISTER_INI_ENTRIES();
 	*/
+	UNREGISTER_INI_ENTRIES();
+	restore_error_hooks(TSRMLS_C);
 	return SUCCESS;
 }
 /* }}} */
@@ -123,7 +143,6 @@ PHP_RSHUTDOWN_FUNCTION(xlog)
 {
 	if (XLOG_G(redis) != NULL){
 		php_stream_free(XLOG_G(redis), PHP_STREAM_FREE_CLOSE);
-		XLOG_G(redis) = NULL;
 	}
 	return SUCCESS;
 }
@@ -189,6 +208,7 @@ PHP_FUNCTION(confirm_xlog_compiled)
 	execute_redis_command(stream, &result, command, command_len TSRMLS_CC);
 	RETURN_ZVAL(result, 0, 0);
 	*/
+	php_printf("%s\n", XLOG_G(mail_smtp));
 }
 /* }}} */
 /* The previous line is meant for vim and emacs, so it can correctly fold and 

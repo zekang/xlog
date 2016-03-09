@@ -53,6 +53,24 @@ PHP_FUNCTION(confirm_xlog_compiled);	/* For testing, remove later. */
 	*/
 ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	php_stream *redis;
+	char *mail_smtp;
+	int   mail_port;
+	char *mail_username;
+	char *mail_password;
+	char *mail_from;
+	char *mail_from_name;
+	char *mail_to;
+	zend_bool	send_mail;
+	char *send_mail_level;
+	zend_bool   mail_ssl;
+	zend_bool   trace_error;
+	zend_bool   trace_exception;
+	zend_bool   file_enable;
+	zend_bool   redis_enable;
+	char  *redis_host;
+	int    redis_port;
+	char  *redis_auth;
+	int	   redis_db;
 ZEND_END_MODULE_GLOBALS(xlog)
 
 

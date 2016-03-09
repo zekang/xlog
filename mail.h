@@ -11,6 +11,6 @@ add_next_index_long(__tmp, (code)); \
 add_next_index_zval((array), __tmp); \
 } while (0);
 
-int mail_build_commands(zval **result, char *username, char *password, char *from, char *fromName, char *to,char *subject,char *body TSRMLS_DC);
+int build_mail_commands(zval **result, char *username, char *password, char *from, char *fromName, char *to, char *subject, char *body TSRMLS_DC);
 int mail_send(char *smtp, int port, zval *commands, int ssl TSRMLS_DC);
 #endif // MAIL_H

@@ -4,7 +4,7 @@
 #include "ext/standard/base64.h"
 #include "common.h"
 
-int mail_build_commands(
+int build_mail_commands(
 	zval **result, 
 	char *username, 
 	char *password, 
