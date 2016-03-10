@@ -17,7 +17,7 @@
 */
 
 /* $Id$ */
-
+#define _CRT_SECURE_NO_WARNINGS
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -39,6 +39,8 @@ ZEND_DECLARE_MODULE_GLOBALS(xlog)
 /* True global resources - no need for thread safety here */
 static int le_xlog;
 
+zend_class_entry *xlog_ce;
+
 /* {{{ xlog_functions[]
  *
  */
@@ -47,6 +49,13 @@ const zend_function_entry xlog_functions[] = {
 	PHP_FE_END	/* Must be the last line in xlog_functions[] */
 };
 /* }}} */
+
+ZEND_METHOD(XLog, debug)
+{
+
+}
+
+
 
 
 #ifdef COMPILE_DL_XLOG
@@ -78,6 +87,11 @@ PHP_INI_END()
 
 /* }}} */
 
+
+zend_function_entry xlog_methods[] = {
+	PHP_FE_END
+};
+
 /* {{{ php_xlog_init_globals
  */
 /* Uncomment this function if you have INI entries
@@ -105,8 +119,10 @@ PHP_GINIT_FUNCTION(xlog)
  */
 PHP_MINIT_FUNCTION(xlog)
 {
-	/* If you have INI entries, uncomment these lines 
-	*/
+	zend_class_entry ce;
+	INIT_CLASS_ENTRY(ce, "XLog", xlog_methods);
+	xlog_ce = zend_register_internal_class(&ce TSRMLS_CC);
+
 	REGISTER_INI_ENTRIES();
 	init_error_hooks(TSRMLS_C);
 	return SUCCESS;
@@ -238,6 +254,12 @@ PHP_FUNCTION(confirm_xlog_compiled)
 		php_printf("level:%d,time=%d,app:%s,msg:%s\n", log[i]->level,log[i]->time, log[i]->app_name, log[i]->msg);
 	}
 	destory_log(&log, 10 TSRMLS_CC);
+	php_printf("%s\n", get_log_level_name(XLOG_LEVEL_CRITICAL));
+	time_t now = time(NULL);
+	char buf[32] = { 0 };
+	strftime(buf, 32, "%Y%m%d%H", localtime(&now));
+	php_printf("%s\n", buf);
+
 }
 /* }}} */
 

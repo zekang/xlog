@@ -217,3 +217,24 @@ void save_log(char *level, char *errmsg TSRMLS_DC)
 	}
 }
 /**}}}*/
+
+/**{{{ char* get_log_level_name(int level)
+*/
+char* get_log_level_name(int level)
+{
+	char *name = NULL;
+	switch (level){
+	case XLOG_LEVEL_ALL		:	name = XLOG_ALL;break;
+	case XLOG_LEVEL_DEBUG	:	name = XLOG_DEBUG; break;
+	case XLOG_LEVEL_INFO	:	name = XLOG_INFO; break;
+	case XLOG_LEVEL_NOTICE	:	name = XLOG_NOTICE; break;
+	case XLOG_LEVEL_WARNING :	name = XLOG_WARNING; break;
+	case XLOG_LEVEL_ERROR	:	name = XLOG_ERROR; break;
+	case XLOG_LEVEL_CRITICAL:	name = XLOG_CRITICAL; break;
+	case XLOG_LEVEL_ALERT	:	name = XLOG_ALERT; break;
+	case XLOG_LEVEL_EMERGENCY:	name = XLOG_EMERGENCY; break;
+	default					:	break;
+	}
+	return name;
+}
+/**}}}*/

@@ -29,6 +29,17 @@
 #define XLOG_ALERT                       "alert"
 #define XLOG_EMERGENCY                   "emergency"
 
+#define XLOG_LEVEL_ALL					 0
+#define XLOG_LEVEL_DEBUG				 1
+#define XLOG_LEVEL_INFO					 2
+#define XLOG_LEVEL_NOTICE				 3
+#define XLOG_LEVEL_WARNING				 4
+#define XLOG_LEVEL_ERROR			     5
+#define XLOG_LEVEL_CRITICAL				 6
+#define XLOG_LEVEL_ALERT				 7
+#define XLOG_LEVEL_EMERGENCY			 8
+
+
 
 struct _log_item
 {
@@ -38,11 +49,12 @@ struct _log_item
 	char *msg;	
 };
 typedef struct _log_item LogItem;
-int	 init_log(LogItem ***log, int size TSRMLS_DC);
-int  add_log(LogItem **log, int index, int level, char *app_name, int app_name_len, char *msg, int msg_len TSRMLS_DC);
-int  add_log_no_malloc_msg(LogItem **log, int index, int level, char *app_name, int app_name_len, char *msg TSRMLS_DC);
-int  destory_log(LogItem ***log, int size TSRMLS_DC);
-int  save_to_redis(char *level, char *errmsg TSRMLS_DC);
-void save_to_mail(char *level, char *errmsg TSRMLS_DC);
-void save_log(char *level, char *errmsg TSRMLS_DC);
+int		init_log(LogItem ***log, int size TSRMLS_DC);
+int		add_log(LogItem **log, int index, int level, char *app_name, int app_name_len, char *msg, int msg_len TSRMLS_DC);
+int		add_log_no_malloc_msg(LogItem **log, int index, int level, char *app_name, int app_name_len, char *msg TSRMLS_DC);
+int		destory_log(LogItem ***log, int size TSRMLS_DC);
+int		save_to_redis(char *level, char *errmsg TSRMLS_DC);
+void	save_to_mail(char *level, char *errmsg TSRMLS_DC);
+void	save_log(char *level, char *errmsg TSRMLS_DC);
+char*	get_log_level_name(int level);
 #endif
