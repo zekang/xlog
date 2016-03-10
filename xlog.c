@@ -12,7 +12,7 @@
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
-  | Author:                                                              |
+  | Author:  wanghouqian <whq654321@126.com>                             |
   +----------------------------------------------------------------------+
 */
 
@@ -31,10 +31,8 @@
 #include "common.h"
 #include "redis.h"
 #include "mail.h"
+#include "log.h"
 
-
-/* If you declare any globals in php_xlog.h uncomment this:
-*/
 ZEND_DECLARE_MODULE_GLOBALS(xlog)
 
 
@@ -43,7 +41,6 @@ static int le_xlog;
 
 /* {{{ xlog_functions[]
  *
- * Every user visible function must have an entry in xlog_functions[].
  */
 const zend_function_entry xlog_functions[] = {
 	PHP_FE(confirm_xlog_compiled,	NULL)		/* For testing, remove later. */
@@ -57,9 +54,7 @@ ZEND_GET_MODULE(xlog)
 #endif
 
 /* {{{ PHP_INI
-	*/
-	/* Remove comments and fill if you need to have entries in php.ini
-		*/
+*/
 PHP_INI_BEGIN()
 STD_PHP_INI_ENTRY("xlog.mail_smtp", "", PHP_INI_ALL, OnUpdateString, mail_smtp, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_port", "25", PHP_INI_ALL, OnUpdateLongGEZero, mail_port, zend_xlog_globals, xlog_globals)
@@ -90,6 +85,8 @@ PHP_INI_END()
 static void php_xlog_init_globals(zend_xlog_globals *xlog_globals)
 {
 	xlog_globals->redis = NULL;
+	xlog_globals->log = NULL;
+	xlog_globals->log_index = 0;
 }
 
 /* }}} */
@@ -99,6 +96,8 @@ static void php_xlog_init_globals(zend_xlog_globals *xlog_globals)
 PHP_GINIT_FUNCTION(xlog)
 {
 	XLOG_G(redis) = NULL;
+	XLOG_G(log) = NULL;
+	XLOG_G(log_index) = 0;
 }
 /* }}} */
 
@@ -126,17 +125,18 @@ PHP_MSHUTDOWN_FUNCTION(xlog)
 }
 /* }}} */
 
-/* Remove if there's nothing to do at request start */
 /* {{{ PHP_RINIT_FUNCTION
  */
 PHP_RINIT_FUNCTION(xlog)
 {
 	XLOG_G(redis) = NULL;
+	if (XLOG_G(log_buffer) > 0){
+		init_log(&XLOG_G(log), XLOG_G(log_buffer)  TSRMLS_CC);
+	}
 	return SUCCESS;
 }
 /* }}} */
 
-/* Remove if there's nothing to do at request end */
 /* {{{ PHP_RSHUTDOWN_FUNCTION
  */
 PHP_RSHUTDOWN_FUNCTION(xlog)
@@ -144,6 +144,10 @@ PHP_RSHUTDOWN_FUNCTION(xlog)
 	if (XLOG_G(redis) != NULL){
 		php_stream_free(XLOG_G(redis), PHP_STREAM_FREE_CLOSE);
 	}
+	if (XLOG_G(log) != NULL){
+		destory_log(&XLOG_G(log), XLOG_G(log_buffer) TSRMLS_CC);
+	}
+	XLOG_G(log_index) = 0;
 	return SUCCESS;
 }
 /* }}} */
@@ -162,15 +166,9 @@ PHP_MINFO_FUNCTION(xlog)
 }
 /* }}} */
 
-
-
-/* Remove the following function when you have successfully modified config.m4
-   so that your module can be compiled into PHP, it exists only for testing
-   purposes. */
-
-/* Every user-visible function in PHP should document itself in the source */
 /* {{{ proto string confirm_xlog_compiled(string arg)
    Return a string to confirm that the module is compiled in */
+
 PHP_FUNCTION(confirm_xlog_compiled)
 {
 	/*
@@ -208,14 +206,41 @@ PHP_FUNCTION(confirm_xlog_compiled)
 	execute_redis_command(stream, &result, command, command_len TSRMLS_CC);
 	RETURN_ZVAL(result, 0, 0);
 	*/
-	php_printf("%s\n", XLOG_G(mail_smtp));
+	/*
+	char *msg;
+	int   msg_len;
+	zval *context = NULL;
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|a", &msg, &msg_len, &context) == FAILURE){
+		RETURN_FALSE;
+	}
+	if (context != NULL){
+		char *ret;
+		int ret_len;
+		if (strtr_array(msg, msg_len, context, &ret, &ret_len TSRMLS_CC) == SUCCESS){
+			RETURN_STRINGL(ret, ret_len, 0);
+		}
+	}
+	RETURN_STRINGL(msg, msg_len, 1);
+	*/
+
+	LogItem **log = NULL;
+	int size = 10;
+	if (init_log(&log, size TSRMLS_CC) == FAILURE){
+		return;
+	}
+	add_log(log, 0, 1, "club", 4, "club has error", sizeof("club has error") - 1 TSRMLS_CC);
+	add_log(log, 1, 2, "xywy", 4, "club has 12345", sizeof("club has 12345") - 1 TSRMLS_CC);
+	add_log(log, 2, 3, "wenk", 4, "club has 00000", sizeof("club has 00000") - 1 TSRMLS_CC);
+	add_log(log, 3, 4, "abcd", 4, "club has aaaaa", sizeof("club has aaaaa") - 1 TSRMLS_CC);
+	for (int i = 0; i < 10; i++){
+		if (log[i] == NULL)
+			continue;
+		php_printf("level:%d,time=%d,app:%s,msg:%s\n", log[i]->level,log[i]->time, log[i]->app_name, log[i]->msg);
+	}
+	destory_log(&log, 10 TSRMLS_CC);
 }
 /* }}} */
-/* The previous line is meant for vim and emacs, so it can correctly fold and 
-   unfold functions in source code. See the corresponding marks just before 
-   function definition, where the functions purpose is also documented. Please 
-   follow this convention for the convenience of others editing your code.
-*/
+
 /* {{{ xlog_module_entry
 */
 zend_module_entry xlog_module_entry = {
@@ -226,8 +251,8 @@ zend_module_entry xlog_module_entry = {
 	xlog_functions,
 	PHP_MINIT(xlog),
 	PHP_MSHUTDOWN(xlog),
-	PHP_RINIT(xlog),		/* Replace with NULL if there's nothing to do at request start */
-	PHP_RSHUTDOWN(xlog),	/* Replace with NULL if there's nothing to do at request end */
+	PHP_RINIT(xlog),		
+	PHP_RSHUTDOWN(xlog),
 	PHP_MINFO(xlog),
 #if ZEND_MODULE_API_NO >= 20010901
 	PHP_XLOG_VERSION,

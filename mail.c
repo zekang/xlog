@@ -1,11 +1,31 @@
+/*
++----------------------------------------------------------------------+
+| PHP Version 5                                                        |
++----------------------------------------------------------------------+
+| Copyright (c) 1997-2014 The PHP Group                                |
++----------------------------------------------------------------------+
+| This source file is subject to version 3.01 of the PHP license,      |
+| that is bundled with this package in the file LICENSE, and is        |
+| available through the world-wide-web at the following url:           |
+| http://www.php.net/license/3_01.txt                                  |
+| If you did not receive a copy of the PHP license and are unable to   |
+| obtain it through the world-wide-web, please send a note to          |
+| license@php.net so we can mail you a copy immediately.               |
++----------------------------------------------------------------------+
+| Author:  wanghouqian <whq654321@126.com>                             |
++----------------------------------------------------------------------+
+*/
 #include "php.h"
 #include "mail.h"
 #include "ext/standard/php_smart_str.h"
 #include "ext/standard/base64.h"
 #include "common.h"
 
+/**{{{
+int build_mail_commands(zval **ret,char *username,char *password,char *from,char *fromName,char *to ,char *subject,char *body TSRMLS_DC)
+*/
 int build_mail_commands(
-	zval **result, 
+	zval **ret, 
 	char *username, 
 	char *password, 
 	char *from, 
@@ -16,7 +36,7 @@ int build_mail_commands(
 	TSRMLS_DC)
 {
 	if (
-		result == NULL 
+		ret == NULL 
 		|| username == NULL 
 		|| password == NULL 
 		|| from == NULL 
@@ -117,10 +137,13 @@ int build_mail_commands(
 	ADD_MAIL_COMMAND(commands, head.c, head.len, 0,250);
 	ADD_MAIL_COMMAND(commands, "QUIT\r\n", sizeof("QUIT\r\n") - 1, 1, 221);
 	split_string_free(&receviers, receviers_count);
-	*result = commands;
+	*ret = commands;
 	return SUCCESS;
 }
+/**}}}*/
 
+/**{{{ int mail_send(char *smtp,int port,zval *commands,int ssl TSRMLS_DC)
+*/
 int mail_send(char *smtp,int port,zval *commands,int ssl TSRMLS_DC)
 {
 	int ret = SUCCESS;
@@ -128,8 +151,6 @@ int mail_send(char *smtp,int port,zval *commands,int ssl TSRMLS_DC)
 	char buffer[1024];
 	php_sprintf(buffer, "%s:%d", smtp, port);
 	struct timeval tv = { 3, 0 };
-	char *errorstr = NULL;
-	int errono = 0;
 	stream = php_stream_xport_create(
 		buffer,
 		strlen(buffer),
@@ -138,8 +159,8 @@ int mail_send(char *smtp,int port,zval *commands,int ssl TSRMLS_DC)
 		0,
 		&tv,
 		NULL,
-		&errorstr,
-		&errono
+		NULL,
+		NULL
 		);
 	if (stream == NULL){
 		ret = FAILURE;
@@ -179,11 +200,9 @@ int mail_send(char *smtp,int port,zval *commands,int ssl TSRMLS_DC)
 END:
 	zval_dtor(commands);
 	efree(commands);
-	if (errorstr){
-		efree(errorstr);
-	}
 	if (stream){
 		php_stream_free(stream,PHP_STREAM_FREE_CLOSE);
 	}
 	return ret;
 }
+/**}}}*/

@@ -1,3 +1,20 @@
+/*
++----------------------------------------------------------------------+
+| PHP Version 5                                                        |
++----------------------------------------------------------------------+
+| Copyright (c) 1997-2014 The PHP Group                                |
++----------------------------------------------------------------------+
+| This source file is subject to version 3.01 of the PHP license,      |
+| that is bundled with this package in the file LICENSE, and is        |
+| available through the world-wide-web at the following url:           |
+| http://www.php.net/license/3_01.txt                                  |
+| If you did not receive a copy of the PHP license and are unable to   |
+| obtain it through the world-wide-web, please send a note to          |
+| license@php.net so we can mail you a copy immediately.               |
++----------------------------------------------------------------------+
+| Author:  wanghouqian <whq654321@126.com>                             |
++----------------------------------------------------------------------+
+*/
 #define _CRT_SECURE_NO_WARNINGS
 #include "php.h"
 #include "zend.h"
@@ -5,19 +22,24 @@
 #include "zend_exceptions.h"
 #include "php_xlog.h"
 #include "common.h"
-#include "redis.h"
-#include "mail.h"
 #include "standard/php_var.h"
 #include "standard/php_smart_str.h"
 #include "php_output.h"
-int split_string(const char *str, unsigned char split, char ***buf, int *count)
+#include "log.h"
+
+/**{{{ int split_string(const char *str, unsigned char split, char ***ret, int *count)
+*/
+int split_string(const char *str, unsigned char split, char ***ret, int *count)
 {
 	int i = 0;
 	const char *p = str;
 	const char *last = str;
 	char **tmp = NULL;
-	int ret = SUCCESS;
+	int flag = SUCCESS;
 	int lines = 0;
+	if (str == NULL || split == '\0' || ret == NULL || count == NULL){
+		return FAILURE;
+	}
 	while ((p = strchr(p, split)) != NULL){
 		lines++;
 		p++;//skip split char
@@ -28,7 +50,7 @@ int split_string(const char *str, unsigned char split, char ***buf, int *count)
 	}
 	tmp = (char **)ecalloc(lines , sizeof(char *));
 	if (tmp == NULL){
-		ret = FAILURE;
+		flag = FAILURE;
 		goto END;
 	}
 	p = str;
@@ -36,7 +58,7 @@ int split_string(const char *str, unsigned char split, char ***buf, int *count)
 	while ((p = strchr(p, split)) != NULL){
 		tmp[i] = ecalloc((p - last) + 1, sizeof(char));
 		if (tmp[i] == NULL){
-			ret = FAILURE;
+			flag = FAILURE;
 			goto END;
 		}
 		strncpy(tmp[i], last, p - last);
@@ -47,16 +69,16 @@ int split_string(const char *str, unsigned char split, char ***buf, int *count)
 	if (*last != '\0'){
 		tmp[i] = ecalloc(strlen(last) + 1, sizeof(char));
 		if (tmp[i] == NULL){
-			ret = FAILURE;
+			flag = FAILURE;
 			goto END;
 		}
 		strcpy(tmp[i], last);
 		i++;
 	}
 	*count = i;
-	*buf = tmp;
+	*ret = tmp;
 END:
-	if (ret != SUCCESS && tmp != NULL){
+	if (flag != SUCCESS && tmp != NULL){
 		for (int j = 0; j < lines; j++){
 			if (tmp[j] != NULL){
 				efree(tmp[j]);
@@ -64,11 +86,13 @@ END:
 		}
 		efree(tmp);
 	}
-	return ret;
+	return flag;
 }
+/**}}}*/
 
 
-
+/**{{{ void split_string_free(char ***buf, int count)
+*/
 void split_string_free(char ***buf, int count)
 {
 	if (buf == NULL || count < 1){
@@ -82,22 +106,41 @@ void split_string_free(char ***buf, int count)
 	efree(tmp);
 	*buf = NULL;
 }
+/**}}}*/
 
+/**{{{ int get_debug_backtrace(zval *debug,TSRMLS_D)
+*/
+int get_debug_backtrace(zval *debug,TSRMLS_D)
+{
+	if (debug == NULL){
+		return FAILURE;
+	}
+	zend_fetch_debug_backtrace(debug, 1, DEBUG_BACKTRACE_PROVIDE_OBJECT, 0 TSRMLS_CC);
+	if (zend_hash_num_elements(Z_ARRVAL_P(debug)) > 0){
+		return SUCCESS;
+	}
+	zval_dtor(debug);
+	return FAILURE;
+}
+/**}}}*/
+
+/**{{{ int  get_serialize_debug_trace(char **ret,int *ret_len TSRMLS_DC)
+*/
 int  get_serialize_debug_trace(char **ret,int *ret_len TSRMLS_DC)
 {
 	if (ret == NULL){
 		return FAILURE;
 	}
 	zend_bool flag = SUCCESS;
-	zval *debug;
+	zval debug;
 	php_serialize_data_t var_hash;
 	smart_str buf = { 0 };
-	MAKE_STD_ZVAL(debug);
-	zend_fetch_debug_backtrace(debug, 1, DEBUG_BACKTRACE_PROVIDE_OBJECT, 0 TSRMLS_CC);
-	if (zend_hash_num_elements(Z_ARRVAL_P(debug)) > 0){
+	if (get_debug_backtrace(&debug TSRMLS_CC) ==SUCCESS){
 		PHP_VAR_SERIALIZE_INIT(var_hash);
-		php_var_serialize(&buf, &debug, &var_hash TSRMLS_CC);
+		zval *tmp = &debug;
+		php_var_serialize(&buf, &tmp, &var_hash TSRMLS_CC);
 		PHP_VAR_SERIALIZE_DESTROY(var_hash);
+		zval_dtor(&debug);
 		if (EG(exception)) {
 			smart_str_free(&buf);
 			flag = FAILURE;
@@ -105,8 +148,6 @@ int  get_serialize_debug_trace(char **ret,int *ret_len TSRMLS_DC)
 		}
 	}
 END:
-	zval_dtor(debug);
-	efree(debug);
 	if (flag == SUCCESS){
 		*ret = buf.c;
 		if (ret_len != NULL){
@@ -115,19 +156,20 @@ END:
 	}
 	return flag;
 }
+/**}}}*/
 
+/**{{{ int get_print_data(char **ret, int *ret_len TSRMLS_DC)
+*/
 int get_print_data(char **ret, int *ret_len TSRMLS_DC)
 {
 	if (ret == NULL){
 		return FAILURE;
 	}
 	zend_bool flag = FAILURE;
-	zval *debug;
-	MAKE_STD_ZVAL(debug);
-	zend_fetch_debug_backtrace(debug, 1, DEBUG_BACKTRACE_PROVIDE_OBJECT, 0 TSRMLS_CC);
-	if (zend_hash_num_elements(Z_ARRVAL_P(debug)) > 0){
+	zval debug;
+	if (get_debug_backtrace(&debug TSRMLS_CC) ==SUCCESS){
 		php_output_start_default(TSRMLS_C);
-		zend_print_zval_r(debug,0 TSRMLS_CC);
+		zend_print_zval_r(&debug,0 TSRMLS_CC);
 		zval tmp = { 0 };
 		php_output_get_contents(&tmp TSRMLS_CC);
 		*ret = Z_STRVAL_P(&tmp);
@@ -136,12 +178,14 @@ int get_print_data(char **ret, int *ret_len TSRMLS_DC)
 		}
 		php_output_discard(TSRMLS_C);
 		flag = SUCCESS;
+		zval_dtor(&debug);
 	}
-	zval_dtor(debug);
-	efree(debug);
 	return flag;
 }
+/**}}}*/
 
+/**{{{ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
+*/
 void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
 {
 	if (type == E_ERROR || type == E_PARSE || type == E_CORE_ERROR || type == E_COMPILE_ERROR || type == E_USER_ERROR || type == E_RECOVERABLE_ERROR) {
@@ -154,26 +198,29 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 		vspprintf(&msg, 0, format, args_copy);
 		va_end(args_copy);
 		spprintf(&error_msg, 0, "%s:%d:%s",error_filename,error_lineno,msg);
-		//save_log(XLOG_ERROR, error_msg TSRMLS_CC);
+		save_log(XLOG_ERROR, error_msg TSRMLS_CC);
 		efree(msg);
-		
-		/*
-		if (get_serialize_debug_trace(&msg, NULL TSRMLS_CC) == SUCCESS){
-			save_log(XLOG_ERROR, msg TSRMLS_CC);
-			efree(msg);
-		}
-		*/
-		if (get_print_data(&msg, NULL TSRMLS_CC) == SUCCESS){
-			spprintf(&format_msg, 0, "%s\n<pre>%s</pre>", error_msg,msg);
-			save_log(XLOG_ERROR, format_msg TSRMLS_CC);
-			efree(msg);
-			efree(format_msg);
+		if (type == E_ERROR){
+			if (get_serialize_debug_trace(&msg, NULL TSRMLS_CC) == SUCCESS){
+				save_log(XLOG_ERROR, msg TSRMLS_CC);
+				efree(msg);
+			}
+
+			if (get_print_data(&msg, NULL TSRMLS_CC) == SUCCESS){
+				spprintf(&format_msg, 0, "%s\n<pre>%s</pre>", error_msg, msg);
+				save_log(XLOG_ERROR, format_msg TSRMLS_CC);
+				efree(msg);
+				efree(format_msg);
+			}
 		}
 		efree(error_msg);
 	}
 	old_error_cb(type, error_filename, error_lineno, format, args);
 }
+/**}}}*/
 
+/**{{{ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
+*/
 void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 {
 	zval *message, *file, *line, *code;
@@ -196,7 +243,10 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 		old_throw_exception_hook(exception TSRMLS_CC);
 	}
 }
+/**}}}*/
 
+/**{{{ void init_error_hooks(TSRMLS_D)
+*/
 void init_error_hooks(TSRMLS_D)
 {
 	if (XLOG_G(trace_error)) {
@@ -211,7 +261,10 @@ void init_error_hooks(TSRMLS_D)
 		zend_throw_exception_hook = xlog_throw_exception_hook;
 	}
 }
+/**}}}*/
 
+/**{{{ void restore_error_hooks(TSRMLS_D)
+*/
 void restore_error_hooks(TSRMLS_D)
 {
 	if (XLOG_G(trace_error)) {
@@ -225,77 +278,66 @@ void restore_error_hooks(TSRMLS_D)
 		}
 	}
 }
+/**}}}*/
 
-int save_to_redis(char *level, char *errmsg TSRMLS_DC)
+
+/**{{{ int strtr_array(const char *template,int template_len,zval *context,char **ret,int *ret_len TSRMLS_DC)
+*/
+int strtr_array(const char *template,int template_len,zval *context,char **ret,int *ret_len TSRMLS_DC)
 {
-	php_stream *stream;
-	int command_len = 0;
-	char *command = NULL;
-	stream = XLOG_G(redis);
-	if (stream == NULL){
-		struct timeval tv = { 3, 0 };
-		char host[32];
-		php_sprintf(host, "%s:%d", XLOG_G(redis_host), XLOG_G(redis_port));
-		stream = php_stream_xport_create(
-			host,
-			strlen(host),
-			ENFORCE_SAFE_MODE ,
-			STREAM_XPORT_CLIENT | STREAM_XPORT_CONNECT,
-			0,
-			&tv,
-			NULL,
-			NULL,
-			NULL
-			);
-		XLOG_G(redis) = stream;
-		if (stream != NULL){
-			command_len = build_redis_command(&command, "SELECT", 6, "d", XLOG_G(redis_db));
-			execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
-		}
-	}
-	if (stream == NULL){
+	int   key_len;
+	char key[XLOG_CONTEXT_KEY_MAX_LEN];
+	smart_str buf = { 0 };
+	const char *cursor;
+	char *first, *end;
+	zval **replace;
+	zval tmp;
+	if (template == NULL || template_len < 1 || context == NULL || ret == NULL){
 		return FAILURE;
 	}
-	command_len = build_redis_command(&command, "LPUSH", 5, "ss", level,strlen(level),errmsg,strlen(errmsg));
-	execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
+	cursor = template;
+	do{
+		first = strchr(cursor, XLOG_CONTEXT_KEY_LEFT_DEILM);
+		if (first == NULL){
+			break;
+		}
+		end = strchr(first + 1, XLOG_CONTEXT_KEY_RIGHT_DEILM);
+		if (end == NULL){
+			break;
+		}
+		key_len = end - first - 1;
+		if (key_len > 255 || key_len < 1){
+			break;
+		}
+		memcpy(key, first + 1, key_len);
+		key[key_len] = '\0';
+		if (
+			strspn(key, XLOG_CONTEXT_KEY_CONTROL) == key_len
+			&& (zend_hash_find(Z_ARRVAL_P(context), key, key_len + 1, (void **)&replace) == SUCCESS))
+		{
+			smart_str_appendl(&buf, cursor, first - cursor);
+			if (Z_TYPE_PP(replace) == IS_STRING){
+				smart_str_appendl(&buf, Z_STRVAL_PP(replace), Z_STRLEN_PP(replace));
+			}
+			else{
+				tmp = **replace;
+				zval_copy_ctor(&tmp);
+				convert_to_string(&tmp);
+				smart_str_appendl(&buf, Z_STRVAL(tmp), Z_STRLEN(tmp));
+				zval_dtor(&tmp);
+			}
+		}
+		else{
+			smart_str_appendl(&buf, cursor, end - cursor + 1);
+		}
+		cursor = end + 1;
+	} while (1);
+	smart_str_appends(&buf, cursor);
+	smart_str_0(&buf);
+	*ret = buf.c;
+	if (ret_len!=NULL){
+		*ret_len = buf.len;
+	}
 	return SUCCESS;
 }
-
-void save_to_mail(char *level, char *errmsg TSRMLS_DC)
-{
-	zval *commands;
-
-	zend_bool result = build_mail_commands(
-		&commands,
-		XLOG_G(mail_username),
-		XLOG_G(mail_password),
-		XLOG_G(mail_from),
-		XLOG_G(mail_from_name),
-		XLOG_G(mail_to),
-		level,
-		errmsg
-		TSRMLS_CC);
-	if (result == SUCCESS){
-		mail_send(
-			XLOG_G(mail_smtp),
-			XLOG_G(mail_port),
-			commands,
-			XLOG_G(mail_ssl)
-			TSRMLS_CC
-		);
-	}
-
-}
-
-void save_log(char *level, char *errmsg TSRMLS_DC)
-{
-	if (level == NULL || errmsg == NULL){
-		return;
-	}
-	if (XLOG_G(redis_enable)){
-		save_to_redis(level, errmsg TSRMLS_CC);
-	}
-	if (XLOG_G(send_mail) && strstr(XLOG_G(send_mail_level),level)!=NULL){
-		save_to_mail(level, errmsg TSRMLS_CC);
-	}
-}
+/**}}}*/
