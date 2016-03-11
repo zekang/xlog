@@ -44,4 +44,5 @@ xlog.log_buffer = 100
 xlog.log_path = d:/tmp
 
 xlog.project_name = myproject
+
 xlog.host_name = 127.0.0.1
