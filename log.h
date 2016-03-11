@@ -52,9 +52,11 @@ typedef struct _log_item LogItem;
 int		init_log(LogItem ***log, int size TSRMLS_DC);
 int		add_log(LogItem **log, int index, int level, char *app_name, int app_name_len, char *msg, int msg_len TSRMLS_DC);
 int		add_log_no_malloc_msg(LogItem **log, int index, int level, char *app_name, int app_name_len, char *msg TSRMLS_DC);
+int		check_if_need_reset(LogItem **log, int *index TSRMLS_DC);
 int		destory_log(LogItem ***log, int size TSRMLS_DC);
-int		save_to_redis(char *level, char *errmsg TSRMLS_DC);
-void	save_to_mail(char *level, char *errmsg TSRMLS_DC);
-void	save_log(char *level, char *errmsg TSRMLS_DC);
+int		save_to_redis(int level, char *errmsg TSRMLS_DC);
+void	save_to_mail(int level, char *errmsg TSRMLS_DC);
+void	save_log_no_buffer(int level, char* app_name, char *errmsg TSRMLS_DC);
+void	save_log_with_buffer(LogItem **log TSRMLS_DC);
 char*	get_log_level_name(int level);
 #endif

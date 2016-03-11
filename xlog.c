@@ -41,6 +41,16 @@ static int le_xlog;
 
 zend_class_entry *xlog_ce;
 
+ZEND_BEGIN_ARG_INFO_EX(arg_info_log_common,0,0,2)
+ZEND_ARG_INFO(0,msg)
+ZEND_ARG_ARRAY_INFO(0,context,1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arg_info_log, 0, 0, 3)
+ZEND_ARG_INFO(0,level)
+ZEND_ARG_INFO(0, msg)
+ZEND_ARG_ARRAY_INFO(0, context, 1)
+ZEND_END_ARG_INFO()
 /* {{{ xlog_functions[]
  *
  */
@@ -50,9 +60,114 @@ const zend_function_entry xlog_functions[] = {
 };
 /* }}} */
 
+static void process_log_no_context(int level,char *msg,int msg_len TSRMLS_DC)
+{
+	if (XLOG_G(log_buffer) > 0){
+		if (add_log(XLOG_G(log), XLOG_G(log_index), level, "club", 4, msg, msg_len TSRMLS_CC) == SUCCESS){
+			XLOG_G(log_index)++;
+		}
+	}
+	else{
+		save_log_no_buffer(level, NULL, msg TSRMLS_CC);
+	}
+}
+
+static void process_log_with_context(int level, char *msg, int msg_len, zval *context TSRMLS_DC)
+{
+	char *ret = NULL;
+	if (strtr_array(msg, msg_len, context, &ret, NULL TSRMLS_CC) == SUCCESS){
+		if (XLOG_G(log_buffer) > 0){
+			if (add_log_no_malloc_msg(XLOG_G(log), XLOG_G(log_index), level, "club", 4, ret TSRMLS_CC) == SUCCESS){
+				XLOG_G(log_index)++;
+			}
+		}
+		else{
+			save_log_no_buffer(level, NULL, ret TSRMLS_CC);
+			efree(ret);
+		}
+	}
+}
+
+static void process_log(INTERNAL_FUNCTION_PARAMETERS,int level)
+{
+	char *msg;
+	int msg_len;
+	zval *context = NULL;
+	int argc = ZEND_NUM_ARGS();
+	if (zend_parse_parameters(argc TSRMLS_CC, "s|a", &msg, &msg_len, &context) == FAILURE){
+		RETURN_FALSE;
+	}
+	if (argc == 2 && context != NULL){
+		process_log_with_context(level, msg, msg_len, context TSRMLS_CC);
+	}
+	else{
+		process_log_no_context(level, msg, msg_len TSRMLS_CC);
+	}
+	RETURN_TRUE;
+}
+
 ZEND_METHOD(XLog, debug)
 {
+	process_log(INTERNAL_FUNCTION_PARAM_PASSTHRU, XLOG_LEVEL_DEBUG);
+}
 
+
+ZEND_METHOD(XLog, info)
+{
+	process_log(INTERNAL_FUNCTION_PARAM_PASSTHRU, XLOG_LEVEL_INFO);
+}
+
+ZEND_METHOD(XLog, notice)
+{
+	process_log(INTERNAL_FUNCTION_PARAM_PASSTHRU, XLOG_LEVEL_NOTICE);
+}
+
+ZEND_METHOD(XLog, warning)
+{
+	process_log(INTERNAL_FUNCTION_PARAM_PASSTHRU, XLOG_LEVEL_WARNING);
+}
+
+ZEND_METHOD(XLog, error)
+{
+	process_log(INTERNAL_FUNCTION_PARAM_PASSTHRU, XLOG_LEVEL_ERROR);
+}
+
+ZEND_METHOD(XLog, critical)
+{
+	process_log(INTERNAL_FUNCTION_PARAM_PASSTHRU, XLOG_LEVEL_CRITICAL);
+}
+
+ZEND_METHOD(XLog, alert)
+{
+	process_log(INTERNAL_FUNCTION_PARAM_PASSTHRU, XLOG_LEVEL_ALERT);
+}
+
+ZEND_METHOD(XLog, emergency)
+{
+	process_log(INTERNAL_FUNCTION_PARAM_PASSTHRU, XLOG_LEVEL_EMERGENCY);
+}
+
+ZEND_METHOD(XLog, log)
+{
+	char *msg;
+	int msg_len;
+	int level;
+	zval *context = NULL;
+
+	int argc = ZEND_NUM_ARGS();
+	if (zend_parse_parameters(argc TSRMLS_CC, "ls|a", &level,&msg, &msg_len, &context) == FAILURE){
+		RETURN_FALSE;
+	}
+	if (level<0 || level>8){
+		RETURN_FALSE;
+	}
+	if (argc == 3 && context != NULL){
+		process_log_with_context(level, msg, msg_len, context TSRMLS_CC);
+	}
+	else{
+		process_log_no_context(level, msg, msg_len TSRMLS_CC);
+	}
+	RETURN_TRUE;
 }
 
 
@@ -74,7 +189,7 @@ STD_PHP_INI_ENTRY("xlog.mail_from", "",PHP_INI_ALL,OnUpdateString,mail_from,zend
 STD_PHP_INI_ENTRY("xlog.mail_from_name", "", PHP_INI_ALL, OnUpdateString, mail_from_name, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_to", "", PHP_INI_ALL, OnUpdateString, mail_to, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.send_mail", "0", PHP_INI_ALL, OnUpdateBool, send_mail, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.send_mail_level", "",PHP_INI_ALL,OnUpdateString,send_mail_level,zend_xlog_globals,xlog_globals)
+STD_PHP_INI_ENTRY("xlog.send_mail_level", "8", PHP_INI_ALL, OnUpdateLongGEZero, send_mail_level, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.trace_error", "0", PHP_INI_ALL, OnUpdateBool, trace_error, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.trace_exception", "0", PHP_INI_ALL, OnUpdateBool, trace_exception, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.file_enable", "1", PHP_INI_ALL, OnUpdateBool, file_enable, zend_xlog_globals, xlog_globals)
@@ -82,13 +197,23 @@ STD_PHP_INI_ENTRY("xlog.redis_enable", "0", PHP_INI_ALL, OnUpdateBool, redis_ena
 STD_PHP_INI_ENTRY("xlog.redis_host", "", PHP_INI_ALL, OnUpdateString, redis_host, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.redis_port", "6379", PHP_INI_ALL, OnUpdateLongGEZero, redis_port, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.redis_auth", "", PHP_INI_ALL, OnUpdateString, redis_auth, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.redis_db", "0", PHP_INI_ALL, OnUpdateLong, redis_db, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.redis_db", "0", PHP_INI_ALL, OnUpdateLongGEZero, redis_db, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.log_buffer", "100", PHP_INI_ALL, OnUpdateLongGEZero, log_buffer, zend_xlog_globals, xlog_globals)
 PHP_INI_END()
 
 /* }}} */
 
 
 zend_function_entry xlog_methods[] = {
+	ZEND_ME(XLog, debug, arg_info_log_common, ZEND_ACC_PUBLIC |ZEND_ACC_STATIC)
+	ZEND_ME(XLog, notice, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, info, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, warning, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, error, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, critical, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, alert, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, emergency, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, log,    arg_info_log, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	PHP_FE_END
 };
 
@@ -122,7 +247,15 @@ PHP_MINIT_FUNCTION(xlog)
 	zend_class_entry ce;
 	INIT_CLASS_ENTRY(ce, "XLog", xlog_methods);
 	xlog_ce = zend_register_internal_class(&ce TSRMLS_CC);
-
+	zend_declare_class_constant_long(xlog_ce, ZEND_STRL("ALL"),XLOG_LEVEL_ALL TSRMLS_CC);
+	zend_declare_class_constant_long(xlog_ce, ZEND_STRL("DEBUG"), XLOG_LEVEL_DEBUG TSRMLS_CC);
+	zend_declare_class_constant_long(xlog_ce, ZEND_STRL("INFO"), XLOG_LEVEL_INFO TSRMLS_CC);
+	zend_declare_class_constant_long(xlog_ce, ZEND_STRL("NOTICE"), XLOG_LEVEL_NOTICE TSRMLS_CC);
+	zend_declare_class_constant_long(xlog_ce, ZEND_STRL("WARNING"), XLOG_LEVEL_WARNING TSRMLS_CC);
+	zend_declare_class_constant_long(xlog_ce, ZEND_STRL("ERROR"), XLOG_LEVEL_ERROR TSRMLS_CC);
+	zend_declare_class_constant_long(xlog_ce, ZEND_STRL("CRITICAL"), XLOG_LEVEL_CRITICAL TSRMLS_CC);
+	zend_declare_class_constant_long(xlog_ce, ZEND_STRL("ALERT"), XLOG_LEVEL_ALERT TSRMLS_CC);
+	zend_declare_class_constant_long(xlog_ce, ZEND_STRL("EMERGENCY"), XLOG_LEVEL_EMERGENCY TSRMLS_CC);
 	REGISTER_INI_ENTRIES();
 	init_error_hooks(TSRMLS_C);
 	return SUCCESS;
@@ -157,11 +290,13 @@ PHP_RINIT_FUNCTION(xlog)
  */
 PHP_RSHUTDOWN_FUNCTION(xlog)
 {
+	
+	if (XLOG_G(log) != NULL){
+		save_log_with_buffer(XLOG_G(log) TSRMLS_CC);
+		destory_log(&XLOG_G(log), XLOG_G(log_buffer) TSRMLS_CC);
+	}
 	if (XLOG_G(redis) != NULL){
 		php_stream_free(XLOG_G(redis), PHP_STREAM_FREE_CLOSE);
-	}
-	if (XLOG_G(log) != NULL){
-		destory_log(&XLOG_G(log), XLOG_G(log_buffer) TSRMLS_CC);
 	}
 	XLOG_G(log_index) = 0;
 	return SUCCESS;
@@ -239,6 +374,8 @@ PHP_FUNCTION(confirm_xlog_compiled)
 	RETURN_STRINGL(msg, msg_len, 1);
 	*/
 
+	/*
+
 	LogItem **log = NULL;
 	int size = 10;
 	if (init_log(&log, size TSRMLS_CC) == FAILURE){
@@ -259,7 +396,7 @@ PHP_FUNCTION(confirm_xlog_compiled)
 	char buf[32] = { 0 };
 	strftime(buf, 32, "%Y%m%d%H", localtime(&now));
 	php_printf("%s\n", buf);
-
+	*/
 }
 /* }}} */
 
