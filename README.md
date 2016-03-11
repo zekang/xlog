@@ -2,6 +2,7 @@
 php logger
 
 [xlog]
+
 xlog.mail_smtp = "smtp.126.com"
 
 xlog.mail_port = 25
@@ -43,5 +44,4 @@ xlog.log_buffer = 100
 xlog.log_path = d:/tmp
 
 xlog.project_name = myproject
-
 xlog.host_name = 127.0.0.1
