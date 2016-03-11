@@ -41,7 +41,7 @@ int init_log(LogItem ***log, int size TSRMLS_DC)
 */
 int add_log(LogItem **log, int index, int level, char *app_name, int app_name_len, char *msg, int msg_len TSRMLS_DC)
 {
-	if ( log == NULL  || index < 0 || app_name == NULL || app_name_len < 1 || msg == NULL || msg_len < 1){
+	if ( log == NULL  || index < 0 || msg == NULL || msg_len < 1){
 		return FAILURE;
 	}
 	check_if_need_reset(log, &index TSRMLS_CC);
@@ -50,6 +50,11 @@ int add_log(LogItem **log, int index, int level, char *app_name, int app_name_le
 	if (tmp == NULL){
 		return FAILURE;
 	}
+	if (app_name == NULL){
+		app_name = XLOG_G(current_project_name) == NULL ? XLOG_G(project_name) : XLOG_G(current_project_name);
+		app_name_len = strlen(app_name);
+	}
+
 	tmp->app_name = (char *)ecalloc(sizeof(char), app_name_len + 1);
 	if (tmp->app_name == NULL){
 		goto END;
@@ -83,7 +88,7 @@ END:
 */
 int  add_log_no_malloc_msg(LogItem **log, int index, int level, char *app_name, int app_name_len, char *msg TSRMLS_DC)
 {
-	if (log == NULL || index < 0 || app_name == NULL || app_name_len < 1 || msg == NULL){
+	if (log == NULL || index < 0  || msg == NULL){
 		return FAILURE;
 	}
 	check_if_need_reset(log, &index TSRMLS_CC);
@@ -92,6 +97,11 @@ int  add_log_no_malloc_msg(LogItem **log, int index, int level, char *app_name, 
 	if (tmp == NULL){
 		return FAILURE;
 	}
+	if (app_name == NULL){
+		app_name = XLOG_G(current_project_name) == NULL ? XLOG_G(project_name) : XLOG_G(current_project_name);
+		app_name_len = strlen(app_name);
+	}
+
 	tmp->app_name = (char *)ecalloc(sizeof(char), app_name_len + 1);
 	if (tmp->app_name == NULL){
 		goto END;
@@ -151,9 +161,9 @@ int destory_log(LogItem ***log, int size TSRMLS_DC)
 }
 /**}}}*/
 
-/**{{{ save_to_redis(int level, char *errmsg TSRMLS_DC)
+/**{{{ save_to_redis(int level,  char *app_name, char *errmsg TSRMLS_DC)
 */
-int save_to_redis(int level, char *errmsg TSRMLS_DC)
+int save_to_redis(int level, char *app_name, char *errmsg TSRMLS_DC)
 {
 	php_stream *stream;
 	int command_len = 0;
@@ -183,16 +193,24 @@ int save_to_redis(int level, char *errmsg TSRMLS_DC)
 	if (stream == NULL){
 		return FAILURE;
 	}
-	char *key = get_log_level_name(level);
+	char key[256] = {0};
+	char day[16] = { 0 };
+	time_t now = time(NULL);
+	strftime(day, 16, "%Y%m%d", localtime(&now));
+	if (app_name == NULL){
+		app_name = XLOG_G(current_project_name) == NULL ? XLOG_G(project_name) : XLOG_G(current_project_name);
+	}
+	php_sprintf(key, "%s_%s_%s_%s", XLOG_G(host_name), app_name, day, get_log_level_name(level));
+		
 	command_len = build_redis_command(&command, "LPUSH", 5, "ss", key, strlen(key), errmsg, strlen(errmsg));
 	execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
 	return SUCCESS;
 }
 /**}}}*/
 
-/**{{{ save_to_mail(int level, char *errmsg TSRMLS_DC)
+/**{{{ save_to_mail(int level,  char *app_name, char *errmsg TSRMLS_DC)
 */
-void save_to_mail(int level, char *errmsg TSRMLS_DC)
+void save_to_mail(int level, char *app_name, char *errmsg TSRMLS_DC)
 {
 	zval *commands;
 	char *subject = get_log_level_name(level);
@@ -230,16 +248,16 @@ void save_log_no_buffer(int level, char* app_name,char *errmsg TSRMLS_DC)
 	time_t now = time(NULL);
 	char *tmp;
 	if (app_name == NULL){
-		app_name = "club";
+		app_name = XLOG_G(current_project_name) == NULL ? XLOG_G(project_name) : XLOG_G(current_project_name);
 	}
 	strftime(buf, 32, "%Y-%m-%d %H:%M:%S", localtime(&now));
 	spprintf(&tmp, 0, "level:%s,time:%s,app:%s,msg:%s\n", get_log_level_name(level), buf, app_name, errmsg);
 	if (XLOG_G(redis_enable)){
-		save_to_redis(level, tmp TSRMLS_CC);
+		save_to_redis(level, app_name,tmp TSRMLS_CC);
 	}
 	/*
 	if (XLOG_G(send_mail) && level >= XLOG_G(send_mail_level)){
-		save_to_mail(level, tmp TSRMLS_CC);
+		save_to_mail(level, app_name,tmp TSRMLS_CC);
 	}
 	*/
 	efree(tmp);
@@ -257,11 +275,11 @@ void save_log_with_buffer(LogItem **log TSRMLS_DC)
 		strftime(buf, 32, "%Y-%m-%d %H:%M:%S", localtime(&(log[i]->time)));
 		spprintf(&tmp, 0, "level:%s,time:%s,app:%s,msg:%s\n", get_log_level_name(log[i]->level), buf, log[i]->app_name, log[i]->msg);
 		if (XLOG_G(redis_enable)){
-			save_to_redis(log[i]->level, tmp TSRMLS_CC);
+			save_to_redis(log[i]->level, log[i]->app_name, tmp TSRMLS_CC);
 		}
 		/*
 		if (XLOG_G(send_mail) && log[i]->level >= XLOG_G(send_mail_level)){
-			save_to_mail(log[i]->level,tmp TSRMLS_CC);
+			save_to_mail(log[i]->level,log[i]->app_name,tmp TSRMLS_CC);
 		}
 		*/
 		efree(tmp);

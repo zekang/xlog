@@ -199,7 +199,7 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 		va_end(args_copy);
 		spprintf(&error_msg, 0, "%s:%d:%s",error_filename,error_lineno,msg);
 		if (XLOG_G(log_buffer) > 0){
-			add_log_no_malloc_msg(XLOG_G(log), XLOG_G(log_index), XLOG_LEVEL_EMERGENCY, "club", 4, error_msg TSRMLS_CC);
+			add_log_no_malloc_msg(XLOG_G(log), XLOG_G(log_index), XLOG_LEVEL_EMERGENCY, NULL, 0, error_msg TSRMLS_CC);
 			XLOG_G(log_index)++;
 		}
 		else{
@@ -209,7 +209,7 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 		if (type == E_ERROR){
 			if (get_serialize_debug_trace(&msg, NULL TSRMLS_CC) == SUCCESS){
 				if (XLOG_G(log_buffer) > 0){
-					add_log_no_malloc_msg(XLOG_G(log), XLOG_G(log_index), XLOG_LEVEL_EMERGENCY, "club", 4, msg TSRMLS_CC);
+					add_log_no_malloc_msg(XLOG_G(log), XLOG_G(log_index), XLOG_LEVEL_EMERGENCY, NULL, 0, msg TSRMLS_CC);
 					XLOG_G(log_index)++;
 				}
 				else{
@@ -219,7 +219,7 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 			}
 			if (get_print_data(&msg, NULL TSRMLS_CC) == SUCCESS){
 				spprintf(&format_msg, 0, "%s\n<pre>%s</pre>", error_msg, msg);
-				save_to_mail(XLOG_LEVEL_EMERGENCY, format_msg TSRMLS_CC);
+				save_to_mail(XLOG_LEVEL_EMERGENCY,NULL, format_msg TSRMLS_CC);
 				efree(msg);
 				efree(format_msg);
 			}
@@ -250,7 +250,7 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 	char *errmsg;
 	spprintf(&errmsg, 0, "%s:%d:%s", Z_STRVAL_P(file), Z_LVAL_P(line), Z_STRVAL_P(message));
 	if (XLOG_G(log_buffer) > 0){
-		add_log_no_malloc_msg(XLOG_G(log), XLOG_G(log_index), XLOG_LEVEL_EMERGENCY, "club", 4, errmsg TSRMLS_CC);
+		add_log_no_malloc_msg(XLOG_G(log), XLOG_G(log_index), XLOG_LEVEL_EMERGENCY, NULL, 0, errmsg TSRMLS_CC);
 		XLOG_G(log_index)++;
 	}
 	else{

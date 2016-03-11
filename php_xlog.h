@@ -44,15 +44,17 @@ PHP_RINIT_FUNCTION(xlog);
 PHP_RSHUTDOWN_FUNCTION(xlog);
 PHP_MINFO_FUNCTION(xlog);
 
-PHP_FUNCTION(confirm_xlog_compiled);
 
 /*Declare  global variables*/
 
 ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	php_stream *redis;
 	LogItem **log;
+	char  *current_project_name;
+	char  *current_log_path;
 	int	  log_index;
-	int	  log_buffer;
+
+	
 	char *mail_smtp;
 	int   mail_port;
 	char *mail_username;
@@ -63,14 +65,24 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	zend_bool	send_mail;
 	int   send_mail_level;
 	zend_bool   mail_ssl;
+	
+
 	zend_bool   trace_error;
 	zend_bool   trace_exception;
-	zend_bool   file_enable;
+	
 	zend_bool   redis_enable;
 	char  *redis_host;
 	int    redis_port;
 	char  *redis_auth;
 	int	   redis_db;
+
+	char  *host_name;
+	char  *project_name;
+
+	int	  log_buffer;
+	zend_bool   file_enable;
+	char  *log_path;
+
 ZEND_END_MODULE_GLOBALS(xlog)
 
 #ifdef ZTS
