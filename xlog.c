@@ -74,13 +74,13 @@ const zend_function_entry xlog_functions[] = {
 
 static void process_log_no_context(int level,char *msg,int msg_len TSRMLS_DC)
 {
-	if (XLOG_G(log_buffer) > 0){
-		if (add_log(XLOG_G(log), XLOG_G(log_index), level, NULL, 0, msg, msg_len TSRMLS_CC) == SUCCESS){
-			XLOG_G(log_index)++;
+	if (XLOG_G(buffer_enable)){
+		if (add_log(XLOG_G(log), XLOG_G(index), level, NULL, 0, msg, msg_len,XLOG_FLAG_SEND_MAIL TSRMLS_CC) == SUCCESS){
+			XLOG_G(index)++;
 		}
 	}
 	else{
-		save_log_no_buffer(level, NULL, msg TSRMLS_CC);
+		save_log_no_buffer(level, NULL, msg ,XLOG_FLAG_SEND_MAIL TSRMLS_CC);
 	}
 }
 
@@ -88,13 +88,13 @@ static void process_log_with_context(int level, char *msg, int msg_len, zval *co
 {
 	char *ret = NULL;
 	if (strtr_array(msg, msg_len, context, &ret, NULL TSRMLS_CC) == SUCCESS){
-		if (XLOG_G(log_buffer) > 0){
-			if (add_log_no_malloc_msg(XLOG_G(log), XLOG_G(log_index), level, NULL, 0, ret TSRMLS_CC) == SUCCESS){
-				XLOG_G(log_index)++;
+		if (XLOG_G(buffer_enable) > 0){
+			if (add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), level, NULL, 0, ret, XLOG_FLAG_SEND_MAIL TSRMLS_CC) == SUCCESS){
+				XLOG_G(index)++;
 			}
 		}
 		else{
-			save_log_no_buffer(level, NULL, ret TSRMLS_CC);
+			save_log_no_buffer(level, NULL, ret, XLOG_FLAG_SEND_MAIL TSRMLS_CC);
 			efree(ret);
 		}
 	}
@@ -109,6 +109,7 @@ static void process_log(INTERNAL_FUNCTION_PARAMETERS,int level)
 	if (zend_parse_parameters(argc TSRMLS_CC, "s|a", &msg, &msg_len, &context) == FAILURE){
 		RETURN_FALSE;
 	}
+
 	if (argc == 2 && context != NULL){
 		process_log_with_context(level, msg, msg_len, context TSRMLS_CC);
 	}
@@ -127,14 +128,14 @@ ZEND_METHOD(XLog, setBasePath)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &path, &path_len) == FAILURE){
 		RETURN_FALSE;
 	}
-	if (XLOG_G(current_log_path) == NULL){
-		XLOG_G(current_log_path) = estrndup(path, path_len);
+	if (XLOG_G(path) == NULL){
+		XLOG_G(path) = estrndup(path, path_len);
 		RETURN_TRUE;
 	}
 
-	if (strcmp(XLOG_G(current_log_path), path) != 0){
-		efree(XLOG_G(current_log_path));	
-		XLOG_G(current_log_path) = estrndup(path, path_len);
+	if (strcmp(XLOG_G(path), path) != 0){
+		efree(XLOG_G(path));	
+		XLOG_G(path) = estrndup(path, path_len);
 	}	
 	RETURN_TRUE;
 }
@@ -145,11 +146,11 @@ ZEND_METHOD(XLog, setBasePath)
 */
 ZEND_METHOD(XLog, getBasePath)
 {
-	if (XLOG_G(current_log_path) == NULL){
-		RETURN_STRING(XLOG_G(log_path), 1);
+	if (XLOG_G(path) == NULL){
+		RETURN_STRING(XLOG_G(default_path), 1);
 	}
 	else{
-		RETURN_STRING(XLOG_G(current_log_path), 1);
+		RETURN_STRING(XLOG_G(path), 1);
 	}
 }
 /**}}}*/
@@ -163,14 +164,14 @@ ZEND_METHOD(XLog, setLogger)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &logger, &logger_len) == FAILURE){
 		RETURN_FALSE;
 	}
-	if (XLOG_G(current_project_name) == NULL){
-		XLOG_G(current_project_name) = estrndup(logger, logger_len);
+	if (XLOG_G(application) == NULL){
+		XLOG_G(application) = estrndup(logger, logger_len);
 		RETURN_TRUE;
 	}
 
-	if (strcmp(XLOG_G(current_project_name), logger) != 0){
-		efree(XLOG_G(current_project_name));
-		XLOG_G(current_project_name) = estrndup(logger, logger_len);
+	if (strcmp(XLOG_G(application), logger) != 0){
+		efree(XLOG_G(application));
+		XLOG_G(application) = estrndup(logger, logger_len);
 	}
 	RETURN_TRUE;
 }
@@ -180,11 +181,11 @@ ZEND_METHOD(XLog, setLogger)
 */
 ZEND_METHOD(XLog, getLastLogger)
 {
-	if (XLOG_G(current_project_name) == NULL){
-		RETURN_STRING(XLOG_G(project_name), 1);
+	if (XLOG_G(application) == NULL){
+		RETURN_STRING(XLOG_G(default_application), 1);
 	}
 	else{
-		RETURN_STRING(XLOG_G(current_project_name), 1);
+		RETURN_STRING(XLOG_G(application), 1);
 	}
 }
 /**}}}*/
@@ -193,7 +194,7 @@ ZEND_METHOD(XLog, getLastLogger)
 */
 ZEND_METHOD(XLog, getBuffer)
 {
-	if (XLOG_G(log_buffer) < 1){
+	if (!XLOG_G(buffer_enable)){
 		RETURN_NULL();
 	}
 	array_init(return_value);
@@ -201,11 +202,11 @@ ZEND_METHOD(XLog, getBuffer)
 	char *tmp;
 	int tmp_len;
 	LogItem **log = XLOG_G(log);
-	for (int i = 0; i < XLOG_G(log_buffer); i++){
+	for (int i = 0; i < XLOG_G(buffer); i++){
 		if (log[i] == NULL)
 			continue;
 		strftime(buf, 32, "%Y-%m-%d %H:%M:%S", localtime(&(log[i]->time)));
-		tmp_len = spprintf(&tmp, 0, "level:%s,time:%s,app:%s,msg:%s", get_log_level_name(log[i]->level), buf, log[i]->app_name, log[i]->msg);
+		tmp_len = spprintf(&tmp, 0, "%s | %s | %s | %s", get_log_level_name(log[i]->level), buf, log[i]->application, log[i]->msg);
 		add_next_index_stringl(return_value, tmp, tmp_len, 0);
 	}
 }
@@ -335,8 +336,9 @@ STD_PHP_INI_ENTRY("xlog.mail_ssl", "0", PHP_INI_ALL, OnUpdateBool, mail_ssl, zen
 STD_PHP_INI_ENTRY("xlog.mail_from", "",PHP_INI_ALL,OnUpdateString,mail_from,zend_xlog_globals,xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_from_name", "", PHP_INI_ALL, OnUpdateString, mail_from_name, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_to", "", PHP_INI_ALL, OnUpdateString, mail_to, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.send_mail", "0", PHP_INI_ALL, OnUpdateBool, send_mail, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.send_mail_level", "8", PHP_INI_ALL, OnUpdateLongGEZero, send_mail_level, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_enable", "0", PHP_INI_ALL, OnUpdateBool, mail_enable, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_level", "8", PHP_INI_ALL, OnUpdateLongGEZero, mail_level, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_backtrace_args", "0", PHP_INI_ALL, OnUpdateBool, mail_backtrace_args, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.trace_error", "0", PHP_INI_ALL, OnUpdateBool, trace_error, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.trace_exception", "0", PHP_INI_ALL, OnUpdateBool, trace_exception, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.file_enable", "1", PHP_INI_ALL, OnUpdateBool, file_enable, zend_xlog_globals, xlog_globals)
@@ -345,10 +347,13 @@ STD_PHP_INI_ENTRY("xlog.redis_host", "", PHP_INI_ALL, OnUpdateString, redis_host
 STD_PHP_INI_ENTRY("xlog.redis_port", "6379", PHP_INI_ALL, OnUpdateLongGEZero, redis_port, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.redis_auth", "", PHP_INI_ALL, OnUpdateString, redis_auth, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.redis_db", "0", PHP_INI_ALL, OnUpdateLongGEZero, redis_db, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.log_buffer", "100", PHP_INI_SYSTEM, OnUpdateLongGEZero, log_buffer, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.host_name", "", PHP_INI_SYSTEM, OnUpdateString, host_name, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.project_name", "", PHP_INI_SYSTEM, OnUpdateString, project_name, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.log_path", "/tmp", PHP_INI_SYSTEM, OnUpdateString, log_path, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.buffer_enable", "1", PHP_INI_ALL, OnUpdateBool, buffer_enable, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.buffer", "100", PHP_INI_SYSTEM, OnUpdateLongGEZero, buffer, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.host", "", PHP_INI_SYSTEM, OnUpdateString, host, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.default_application", "", PHP_INI_SYSTEM, OnUpdateString, default_application, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.default_path", "/tmp", PHP_INI_SYSTEM, OnUpdateString, default_path, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_retry_interval", "600", PHP_INI_SYSTEM, OnUpdateLongGEZero, mail_retry_interval, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.redis_retry_interval", "600", PHP_INI_SYSTEM, OnUpdateLongGEZero, redis_retry_interval, zend_xlog_globals, xlog_globals)
 PHP_INI_END()
 
 /* }}} */
@@ -375,30 +380,18 @@ zend_function_entry xlog_methods[] = {
 	PHP_FE_END
 };
 
-/* {{{ php_xlog_init_globals
- */
-/* Uncomment this function if you have INI entries
-*/
-static void php_xlog_init_globals(zend_xlog_globals *xlog_globals)
-{
-	xlog_globals->redis = NULL;
-	xlog_globals->log = NULL;
-	xlog_globals->log_index = 0;
-	xlog_globals->current_log_path = NULL;
-	xlog_globals->current_project_name = NULL;
-}
-
-/* }}} */
-
 /** {{{ PHP_GINIT_FUNCTION
 */
 PHP_GINIT_FUNCTION(xlog)
 {
+	XLOG_G(redis_fail_time) = 0;
+	XLOG_G(mail_fail_time) = 0;
 	XLOG_G(redis) = NULL;
 	XLOG_G(log) = NULL;
-	XLOG_G(log_index) = 0;
-	XLOG_G(current_project_name) = NULL;
-	XLOG_G(current_log_path) = NULL;
+	XLOG_G(index) = 0;
+	XLOG_G(application) = NULL;
+	XLOG_G(path) = NULL;
+	XLOG_G(file_handle) = NULL;
 }
 /* }}} */
 
@@ -441,10 +434,19 @@ PHP_MSHUTDOWN_FUNCTION(xlog)
 PHP_RINIT_FUNCTION(xlog)
 {
 	XLOG_G(redis) = NULL;
-	if (XLOG_G(log_buffer) > 0){
-		init_log(&XLOG_G(log), XLOG_G(log_buffer)  TSRMLS_CC);
+	XLOG_G(file_handle) = NULL;
+	if (XLOG_G(buffer_enable)){
+		if (XLOG_G(buffer) < 1){
+			XLOG_G(buffer) = 100;
+		}
+		init_log(&XLOG_G(log), XLOG_G(buffer)  TSRMLS_CC);
 	}
-
+	if (XLOG_G(redis_retry_interval) < 10){
+		XLOG_G(redis_retry_interval) = 10;
+	}
+	if (XLOG_G(mail_retry_interval) < 10){
+		XLOG_G(mail_retry_interval) = 10;
+	}
 	return SUCCESS;
 }
 /* }}} */
@@ -453,20 +455,27 @@ PHP_RINIT_FUNCTION(xlog)
  */
 PHP_RSHUTDOWN_FUNCTION(xlog)
 {
-	
 	if (XLOG_G(log) != NULL){
 		save_log_with_buffer(XLOG_G(log) TSRMLS_CC);
-		destory_log(&XLOG_G(log), XLOG_G(log_buffer) TSRMLS_CC);
+		destory_log(&XLOG_G(log), XLOG_G(buffer) TSRMLS_CC);
 	}
 	if (XLOG_G(redis) != NULL){
-		php_stream_free(XLOG_G(redis), PHP_STREAM_FREE_CLOSE);
+		php_stream_close(XLOG_G(redis));
+		php_stream_free(XLOG_G(redis), PHP_STREAM_FREE_RELEASE_STREAM);
 	}
-	XLOG_G(log_index) = 0;
-	if (XLOG_G(current_project_name) != NULL){
-		efree(XLOG_G(current_project_name));
+	XLOG_G(index) = 0;
+	if (XLOG_G(application) != NULL){
+		efree(XLOG_G(application));
+		XLOG_G(application) = NULL;
 	}
-	if (XLOG_G(current_log_path) != NULL){
-		efree(XLOG_G(current_log_path));
+	if (XLOG_G(path) != NULL){
+		efree(XLOG_G(path));
+		XLOG_G(path) = NULL;
+	}
+	if (XLOG_G(file_handle) != NULL){
+		zend_hash_destroy(XLOG_G(file_handle));
+		FREE_HASHTABLE(XLOG_G(file_handle));
+		XLOG_G(file_handle) = NULL;
 	}
 	return SUCCESS;
 }

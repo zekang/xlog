@@ -7,27 +7,29 @@ xlog.mail_smtp = "smtp.126.com"
 
 xlog.mail_port = 25
 
-xlog.mail_from = "xxxxxx@126.com"
+xlog.mail_from = "xxxxx@126.com"
 
-xlog.mail_from_name="xxxxxx"
+xlog.mail_from_name="xxxxx@126.com"
 
-xlog.mail_username = "xxxxxx@126.com"
+xlog.mail_username = "xxxxx@126.com"
 
-xlog.mail_password = "xxxxxx@"
+xlog.mail_password = "xxxxx@"
 
-xlog.mail_to = "xxxxxx@xxxxxx.com"
+xlog.mail_to = "xxxxx@qq.com"
 
 xlog.mail_ssl  = 0
 
-xlog.send_mail = 1
+xlog.mail_enable = 0
 
-xlog.send_mail_level = 8
+xlog.mail_level = 8
+
+xlog.mail_backtrace_args = 1
 
 xlog.trace_error = 1
 
 xlog.trace_exception = 1
 
-xlog.file_enable = 1
+xlog.file_enable = 0
 
 xlog.redis_enable = 1
 
@@ -39,10 +41,16 @@ xlog.redis_auth = ""
 
 xlog.redis_db = 0
 
-xlog.log_buffer = 100
+xlog.buffer = 100
 
-xlog.log_path = d:/tmp
+xlog.buffer_enable = 1
 
-xlog.project_name = myproject
+xlog.default_path = d:\tmp
 
-xlog.host_name = 127.0.0.1
+xlog.default_application = project
+
+xlog.host = localhost
+
+xlog.redis_retry_interval = 60
+
+xlog.mail_retry_interval = 60

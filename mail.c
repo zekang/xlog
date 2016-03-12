@@ -16,6 +16,7 @@
 +----------------------------------------------------------------------+
 */
 #include "php.h"
+#include "php_xlog.h"
 #include "mail.h"
 #include "ext/standard/php_smart_str.h"
 #include "ext/standard/base64.h"
@@ -150,7 +151,16 @@ int mail_send(char *smtp,int port,zval *commands,int ssl TSRMLS_DC)
 	php_stream *stream = NULL;
 	char buffer[1024];
 	php_sprintf(buffer, "%s:%d", smtp, port);
-	struct timeval tv = { 3, 0 };
+	struct timeval tv = { 1, 0 };
+	char *errorstr = NULL;
+	int errorno;
+	time_t now = time(NULL);
+	if (XLOG_G(mail_fail_time) > 0
+		&& (now - XLOG_G(mail_fail_time) < XLOG_G(mail_retry_interval))
+		){
+		ret = FAILURE;
+		goto END;
+	}
 	stream = php_stream_xport_create(
 		buffer,
 		strlen(buffer),
@@ -159,13 +169,15 @@ int mail_send(char *smtp,int port,zval *commands,int ssl TSRMLS_DC)
 		0,
 		&tv,
 		NULL,
-		NULL,
-		NULL
+		&errorstr,
+		&errorno
 		);
 	if (stream == NULL){
+		XLOG_G(mail_fail_time) = now;
 		ret = FAILURE;
 		goto END;
 	}
+	XLOG_G(mail_fail_time) = 0;
 	if (ssl){
 		php_stream_xport_crypto_setup(stream, STREAM_CRYPTO_METHOD_SSLv23_CLIENT, NULL TSRMLS_CC);
 		php_stream_xport_crypto_enable(stream, TRUE TSRMLS_CC);
@@ -202,6 +214,9 @@ END:
 	efree(commands);
 	if (stream){
 		php_stream_free(stream,PHP_STREAM_FREE_CLOSE);
+	}
+	if (errorstr != NULL){
+		efree(errorstr);
 	}
 	return ret;
 }

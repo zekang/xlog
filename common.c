@@ -20,6 +20,7 @@
 #include "zend.h"
 #include "zend_builtin_functions.h"
 #include "zend_exceptions.h"
+#include "standard/file.h"
 #include "php_xlog.h"
 #include "common.h"
 #include "standard/php_var.h"
@@ -115,7 +116,7 @@ int get_debug_backtrace(zval *debug,TSRMLS_D)
 	if (debug == NULL){
 		return FAILURE;
 	}
-	zend_fetch_debug_backtrace(debug, 1, DEBUG_BACKTRACE_PROVIDE_OBJECT, 0 TSRMLS_CC);
+	zend_fetch_debug_backtrace(debug, 1, XLOG_G(mail_backtrace_args) ? DEBUG_BACKTRACE_PROVIDE_OBJECT : DEBUG_BACKTRACE_IGNORE_ARGS, 0 TSRMLS_CC);
 	if (zend_hash_num_elements(Z_ARRVAL_P(debug)) > 0){
 		return SUCCESS;
 	}
@@ -189,42 +190,40 @@ int get_print_data(char **ret, int *ret_len TSRMLS_DC)
 void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
 {
 	if (type == E_ERROR || type == E_PARSE || type == E_CORE_ERROR || type == E_COMPILE_ERROR || type == E_USER_ERROR || type == E_RECOVERABLE_ERROR) {
-		
 		char *msg,*error_msg,*format_msg;
 		TSRMLS_FETCH();
-		
 		va_list args_copy;
 		va_copy(args_copy, args);
 		vspprintf(&msg, 0, format, args_copy);
 		va_end(args_copy);
 		spprintf(&error_msg, 0, "%s:%d:%s",error_filename,error_lineno,msg);
-		if (XLOG_G(log_buffer) > 0){
-			add_log_no_malloc_msg(XLOG_G(log), XLOG_G(log_index), XLOG_LEVEL_EMERGENCY, NULL, 0, error_msg TSRMLS_CC);
-			XLOG_G(log_index)++;
+		if (XLOG_G(buffer_enable) > 0){
+			add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, error_msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
+			XLOG_G(index)++;
 		}
 		else{
-			save_log_no_buffer(XLOG_LEVEL_EMERGENCY,NULL, error_msg  TSRMLS_CC);
+			save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, error_msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
 		}
 		efree(msg);
 		if (type == E_ERROR){
 			if (get_serialize_debug_trace(&msg, NULL TSRMLS_CC) == SUCCESS){
-				if (XLOG_G(log_buffer) > 0){
-					add_log_no_malloc_msg(XLOG_G(log), XLOG_G(log_index), XLOG_LEVEL_EMERGENCY, NULL, 0, msg TSRMLS_CC);
-					XLOG_G(log_index)++;
+				if (XLOG_G(buffer_enable) > 0){
+					add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
+					XLOG_G(index)++;
 				}
 				else{
-					save_log_no_buffer(XLOG_LEVEL_EMERGENCY,NULL, msg TSRMLS_CC);
+					save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
 					efree(msg);
 				}
 			}
-			if (get_print_data(&msg, NULL TSRMLS_CC) == SUCCESS){
-				spprintf(&format_msg, 0, "%s\n<pre>%s</pre>", error_msg, msg);
+			if (XLOG_G(mail_enable) && (get_print_data(&msg, NULL TSRMLS_CC) == SUCCESS)){
+				spprintf(&format_msg, 0, "<h3>%s</h3>\n<pre>%s</pre>", error_msg, msg);
 				save_to_mail(XLOG_LEVEL_EMERGENCY,NULL, format_msg TSRMLS_CC);
 				efree(msg);
 				efree(format_msg);
 			}
 		}
-		if (XLOG_G(log_buffer) < 1){
+		if (!XLOG_G(buffer_enable)){
 			efree(error_msg);
 		}
 	}
@@ -249,12 +248,12 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 
 	char *errmsg;
 	spprintf(&errmsg, 0, "%s:%d:%s", Z_STRVAL_P(file), Z_LVAL_P(line), Z_STRVAL_P(message));
-	if (XLOG_G(log_buffer) > 0){
-		add_log_no_malloc_msg(XLOG_G(log), XLOG_G(log_index), XLOG_LEVEL_EMERGENCY, NULL, 0, errmsg TSRMLS_CC);
-		XLOG_G(log_index)++;
+	if (XLOG_G(buffer_enable) > 0){
+		add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, errmsg, XLOG_FLAG_SEND_MAIL TSRMLS_CC);
+		XLOG_G(index)++;
 	}
 	else{
-		save_log_no_buffer(XLOG_LEVEL_EMERGENCY,NULL, errmsg TSRMLS_CC);
+		save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, errmsg, XLOG_FLAG_SEND_MAIL TSRMLS_CC);
 		efree(errmsg);
 	}
 
@@ -356,6 +355,28 @@ int strtr_array(const char *template,int template_len,zval *context,char **ret,i
 	*ret = buf.c;
 	if (ret_len!=NULL){
 		*ret_len = buf.len;
+	}
+	return SUCCESS;
+}
+/**}}}*/
+
+/**{{{ int  xlog_make_log_dir(char *dir TSRMLS_DC)
+*/
+int  xlog_make_log_dir(char *dir TSRMLS_DC)
+{
+	if (_access(dir, 0)==0){ //Existence only
+		/*Write permission*/
+		return _access(dir, 2) == 0 ? SUCCESS : FAILURE;
+	}
+	zval *zcontext = NULL;
+	long mode = 0777;
+	zend_bool recursive = 1;
+	php_stream_context *context;
+	_umask(1);
+	context = php_stream_context_from_zval(zcontext, 0);
+	
+	if (!php_stream_mkdir(dir, mode, (recursive ? PHP_STREAM_MKDIR_RECURSIVE : 0) | REPORT_ERRORS, context)) {
+		return FAILURE;
 	}
 	return SUCCESS;
 }

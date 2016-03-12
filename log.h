@@ -19,6 +19,13 @@
 #define LOG_H
 #include "php.h"
 
+
+#ifdef WINDOWS
+#define XLOG_DIRECTORY_SEPARATOR '\\'
+#else
+#define XLOG_DIRECTORY_SEPARATOR '/'
+#endif
+
 #define XLOG_ALL                         "all"
 #define XLOG_DEBUG                       "debug"
 #define XLOG_INFO                        "info"
@@ -39,24 +46,47 @@
 #define XLOG_LEVEL_ALERT				 7
 #define XLOG_LEVEL_EMERGENCY			 8
 
+#define XLOG_FLAG_NO_SEND_MAIL           0
+#define XLOG_FLAG_SEND_MAIL				 1
 
+
+#define CHECK_AND_SET_VALUE_IF_NULL(var,var_len,first,default)  \
+if(var == NULL){ \
+	var = XLOG_G(first) == NULL ? XLOG_G(default) : XLOG_G(first); \
+	if (var_len == 0){ var_len = strlen(var); } \
+}
 
 struct _log_item
 {
-	int level;
 	time_t time ;
-	char *app_name;
+	char *application;
 	char *msg;	
+	short level;
+	short flag;
 };
 typedef struct _log_item LogItem;
-int		init_log(LogItem ***log, int size TSRMLS_DC);
-int		add_log(LogItem **log, int index, int level, char *app_name, int app_name_len, char *msg, int msg_len TSRMLS_DC);
-int		add_log_no_malloc_msg(LogItem **log, int index, int level, char *app_name, int app_name_len, char *msg TSRMLS_DC);
-int		check_if_need_reset(LogItem **log, int *index TSRMLS_DC);
-int		destory_log(LogItem ***log, int size TSRMLS_DC);
-int		save_to_redis(int level, char *app_name, char *errmsg TSRMLS_DC);
-void	save_to_mail(int level, char *app_name, char *errmsg TSRMLS_DC);
-void	save_log_no_buffer(int level, char* app_name, char *errmsg TSRMLS_DC);
-void	save_log_with_buffer(LogItem **log TSRMLS_DC);
-char*	get_log_level_name(int level);
+
+struct _file_handle_cache
+{
+	int level;
+	char *application;
+	char *filename;
+	int write_count;
+	php_stream *stream;
+};
+typedef struct _file_handle_cache FileHandleCache;
+
+int			init_log(LogItem ***log, int size TSRMLS_DC);
+int			add_log(LogItem **log, int index, short level, char *application, int application_len, char *msg, int msg_len, short flag TSRMLS_DC);
+int			add_log_no_malloc_msg(LogItem **log, int index, short level, char *application, int application_len, char *msg, short flag  TSRMLS_DC);
+int			check_if_need_reset(LogItem **log, int *index TSRMLS_DC);
+int			destory_log(LogItem ***log, int size TSRMLS_DC);
+int			save_to_redis(int level, char *application, char *content TSRMLS_DC);
+void		save_to_mail(int level, char *application, char *content TSRMLS_DC);
+void		save_to_file(int level, char *application, char *content, int content_len TSRMLS_DC);
+void		save_log_no_buffer(int level, char* application, char *content, short flag TSRMLS_DC);
+void		save_log_with_buffer(LogItem **log TSRMLS_DC);
+char*		get_log_level_name(int level);
+php_stream *get_file_handle_from_cache(int level, char *application TSRMLS_DC);
+void		file_handle_cache_ptr_dtor_wapper(FileHandleCache **cache);
 #endif
