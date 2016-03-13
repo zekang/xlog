@@ -23,8 +23,7 @@
 extern zend_module_entry xlog_module_entry;
 #define phpext_xlog_ptr &xlog_module_entry
 
-#define PHP_XLOG_VERSION "0.1.0" /* Replace with version number for your extension */
-
+#define PHP_XLOG_VERSION "0.1.0" 
 
 #ifdef PHP_WIN32
 #	define PHP_XLOG_API __declspec(dllexport)
@@ -55,6 +54,7 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	LogItem **log;
 	HashTable *file_handle;
 	char  *application;
+	char  *module;
 	char  *path;
 	int	  index;
 
@@ -83,6 +83,7 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 
 	char  *host;
 	char  *default_application;
+	char  *default_module;
 	int	   buffer;
 	zend_bool   buffer_enable;
 	zend_bool   file_enable;

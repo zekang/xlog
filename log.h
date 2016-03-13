@@ -60,7 +60,8 @@ struct _log_item
 {
 	time_t time ;
 	char *application;
-	char *msg;	
+	char *module;
+	char *content;	
 	short level;
 	short flag;
 };
@@ -69,7 +70,6 @@ typedef struct _log_item LogItem;
 struct _file_handle_cache
 {
 	int level;
-	char *application;
 	char *filename;
 	int write_count;
 	php_stream *stream;
@@ -77,16 +77,17 @@ struct _file_handle_cache
 typedef struct _file_handle_cache FileHandleCache;
 
 int			init_log(LogItem ***log, int size TSRMLS_DC);
-int			add_log(LogItem **log, int index, short level, char *application, int application_len, char *msg, int msg_len, short flag TSRMLS_DC);
-int			add_log_no_malloc_msg(LogItem **log, int index, short level, char *application, int application_len, char *msg, short flag  TSRMLS_DC);
+int			add_log(LogItem **log, int index, short level, char *module, int module_len, char *content, int content_len, short flag TSRMLS_DC);
+int			add_log_no_malloc_msg(LogItem **log, int index, short level, char *module, int module_len, char *content, short flag  TSRMLS_DC);
 int			check_if_need_reset(LogItem **log, int *index TSRMLS_DC);
+int			log_free_item(LogItem **log);
 int			destory_log(LogItem ***log, int size TSRMLS_DC);
-int			save_to_redis(int level, char *application, char *content TSRMLS_DC);
-void		save_to_mail(int level, char *application, char *content TSRMLS_DC);
-void		save_to_file(int level, char *application, char *content, int content_len TSRMLS_DC);
-void		save_log_no_buffer(int level, char* application, char *content, short flag TSRMLS_DC);
+int			save_to_redis(int level,char*application, char *module, char *content TSRMLS_DC);
+void		save_to_mail(int level, char*application, char *module, char *content TSRMLS_DC);
+void		save_to_file(int level, char*application, char *module, char *content, int content_len TSRMLS_DC);
+void		save_log_no_buffer(int level, char* module, char *content, short flag TSRMLS_DC);
 void		save_log_with_buffer(LogItem **log TSRMLS_DC);
 char*		get_log_level_name(int level);
-php_stream *get_file_handle_from_cache(int level, char *application TSRMLS_DC);
+php_stream *get_file_handle_from_cache(int level, char *application, char *module TSRMLS_DC);
 void		file_handle_cache_ptr_dtor_wapper(FileHandleCache **cache);
 #endif

@@ -154,6 +154,13 @@ END:
 		if (ret_len != NULL){
 			*ret_len = buf.len;
 		}
+		if (strlen(buf.c) != buf.len){
+			for (size_t i = 0; i < buf.len; i++){
+				if (buf.c[i] == '\0'){
+					buf.c[i] = '*';
+				}
+			}
+		}
 	}
 	return flag;
 }
@@ -185,6 +192,30 @@ int get_print_data(char **ret, int *ret_len TSRMLS_DC)
 }
 /**}}}*/
 
+/**{{{ int get_var_export_data(char **ret, int *ret_len TSRMLS_DC)
+*/
+int get_var_export_data(char **ret, int *ret_len TSRMLS_DC)
+{
+	if (ret == NULL){
+		return FAILURE;
+	}
+	zend_bool flag = FAILURE;
+	zval debug;
+	smart_str buf = { 0 };
+	if (get_debug_backtrace(&debug TSRMLS_CC) == SUCCESS){
+		zval *tmp = &debug;
+		php_var_export_ex(&tmp, 1, &buf TSRMLS_CC);
+		*ret = buf.c;
+		if (ret_len != NULL){
+			*ret_len = buf.len;
+		}
+		flag = SUCCESS;
+		zval_dtor(&debug);
+	}
+	return flag;
+}
+/**}}}*/
+
 /**{{{ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
 */
 void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
@@ -208,8 +239,9 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 		if (type == E_ERROR){
 			if (get_serialize_debug_trace(&msg, NULL TSRMLS_CC) == SUCCESS){
 				if (XLOG_G(buffer_enable) > 0){
-					add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
-					XLOG_G(index)++;
+					if (add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC) == SUCCESS){
+						XLOG_G(index)++;
+					}
 				}
 				else{
 					save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
@@ -218,7 +250,7 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 			}
 			if (XLOG_G(mail_enable) && (get_print_data(&msg, NULL TSRMLS_CC) == SUCCESS)){
 				spprintf(&format_msg, 0, "<h3>%s</h3>\n<pre>%s</pre>", error_msg, msg);
-				save_to_mail(XLOG_LEVEL_EMERGENCY,NULL, format_msg TSRMLS_CC);
+				save_to_mail(XLOG_LEVEL_EMERGENCY,NULL,NULL, format_msg TSRMLS_CC);
 				efree(msg);
 				efree(format_msg);
 			}

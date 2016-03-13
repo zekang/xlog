@@ -33,6 +33,34 @@
 #include "mail.h"
 #include "log.h"
 
+#define XLOG_SET_METHOD(name)   \
+	char *name; \
+	int name##_len; \
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name##_len) == FAILURE){ \
+		RETURN_FALSE; \
+	}\
+	if (name##_len < 1){ \
+		RETURN_FALSE; \
+	} \
+	if (XLOG_G(name) == NULL){ \
+		XLOG_G(name) = estrndup(name, name##_len); \
+		RETURN_TRUE; \
+	}\
+	if (strcmp(XLOG_G(name), name) != 0){\
+		efree(XLOG_G(name)); \
+		XLOG_G(name) = estrndup(name, name##_len); \
+	} \
+	RETURN_TRUE; 
+
+#define XLOG_GET_METHOD(name)  \
+	if (XLOG_G(name) == NULL){ \
+		RETURN_STRING(XLOG_G(default_##name), 1);\
+	}\
+	else{\
+		RETURN_STRING(XLOG_G(name), 1);\
+	}
+
+
 ZEND_DECLARE_MODULE_GLOBALS(xlog)
 
 
@@ -41,15 +69,17 @@ static int le_xlog;
 
 zend_class_entry *xlog_ce;
 
-ZEND_BEGIN_ARG_INFO_EX(arg_info_log_common, 0, 0, 2)
-ZEND_ARG_INFO(0, msg)
+ZEND_BEGIN_ARG_INFO_EX(arg_info_log_common, 0, 0, 3)
+ZEND_ARG_INFO(0, message)
 ZEND_ARG_ARRAY_INFO(0, context, 1)
+ZEND_ARG_INFO(0,module)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arg_info_log, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arg_info_log, 0, 0, 4)
 ZEND_ARG_INFO(0, level)
-ZEND_ARG_INFO(0, msg)
+ZEND_ARG_INFO(0, message)
 ZEND_ARG_ARRAY_INFO(0, context, 1)
+ZEND_ARG_INFO(0, module)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arg_info_void, 0, 0, 0)
@@ -57,11 +87,15 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arg_info_set_base_path, 0, 0, 1)
 ZEND_ARG_INFO(0, path)
-ZEND_END_ARG_INFO();
+ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arg_info_set_logger, 0, 0, 1)
 ZEND_ARG_INFO(0, logger)
-ZEND_END_ARG_INFO();
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arg_info_set_application,0,0,1)
+ZEND_ARG_INFO(0,application)
+ZEND_END_ARG_INFO()
 
 
 /* {{{ xlog_functions[]
@@ -72,125 +106,125 @@ const zend_function_entry xlog_functions[] = {
 };
 /* }}} */
 
-static void process_log_no_context(int level,char *msg,int msg_len TSRMLS_DC)
+/**{{{ static void process_log_no_context(int level,char *msg,int msg_len,char *module ,int module_len TSRMLS_DC)
+*/
+static void process_log_no_context(int level,char *msg,int msg_len,char *module ,int module_len TSRMLS_DC)
 {
+	if (module_len < 1){
+		module_len = 0;
+		module = NULL;
+	}
 	if (XLOG_G(buffer_enable)){
-		if (add_log(XLOG_G(log), XLOG_G(index), level, NULL, 0, msg, msg_len,XLOG_FLAG_SEND_MAIL TSRMLS_CC) == SUCCESS){
+		if (add_log(XLOG_G(log), XLOG_G(index), level, module, module_len, msg, msg_len, XLOG_FLAG_SEND_MAIL TSRMLS_CC) == SUCCESS){
 			XLOG_G(index)++;
 		}
 	}
 	else{
-		save_log_no_buffer(level, NULL, msg ,XLOG_FLAG_SEND_MAIL TSRMLS_CC);
+		save_log_no_buffer(level, module, msg, XLOG_FLAG_SEND_MAIL TSRMLS_CC);
 	}
 }
+/**}}} */
 
-static void process_log_with_context(int level, char *msg, int msg_len, zval *context TSRMLS_DC)
+/**{{{ static void process_log_with_context(int level, char *msg, int msg_len, zval *context, char *module, int module_len TSRMLS_DC)
+*/
+static void process_log_with_context(int level, char *msg, int msg_len, zval *context, char *module, int module_len TSRMLS_DC)
 {
 	char *ret = NULL;
+	if (module_len < 1){
+		module_len = 0;
+		module = NULL;
+	}
 	if (strtr_array(msg, msg_len, context, &ret, NULL TSRMLS_CC) == SUCCESS){
 		if (XLOG_G(buffer_enable) > 0){
-			if (add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), level, NULL, 0, ret, XLOG_FLAG_SEND_MAIL TSRMLS_CC) == SUCCESS){
+			if (add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), level, module, module_len, ret, XLOG_FLAG_SEND_MAIL TSRMLS_CC) == SUCCESS){
 				XLOG_G(index)++;
 			}
 		}
 		else{
-			save_log_no_buffer(level, NULL, ret, XLOG_FLAG_SEND_MAIL TSRMLS_CC);
+			save_log_no_buffer(level, module, ret, XLOG_FLAG_SEND_MAIL TSRMLS_CC);
 			efree(ret);
 		}
 	}
 }
+/**}}} */
 
+/**{{{ static void process_log(INTERNAL_FUNCTION_PARAMETERS,int level)
+*/
 static void process_log(INTERNAL_FUNCTION_PARAMETERS,int level)
 {
-	char *msg;
-	int msg_len;
+	char *msg, *module = NULL;
+	int msg_len, module_len = 0;
+
 	zval *context = NULL;
 	int argc = ZEND_NUM_ARGS();
-	if (zend_parse_parameters(argc TSRMLS_CC, "s|a", &msg, &msg_len, &context) == FAILURE){
+	if (zend_parse_parameters(argc TSRMLS_CC, "s|as", &msg, &msg_len, &context,&module,&module_len) == FAILURE){
 		RETURN_FALSE;
 	}
 
-	if (argc == 2 && context != NULL){
-		process_log_with_context(level, msg, msg_len, context TSRMLS_CC);
+	if (argc >= 2 && context != NULL){
+		process_log_with_context(level, msg, msg_len, context,module,module_len TSRMLS_CC);
 	}
 	else{
-		process_log_no_context(level, msg, msg_len TSRMLS_CC);
+		process_log_no_context(level, msg, msg_len, module,module_len TSRMLS_CC);
 	}
 	RETURN_TRUE;
 }
+/**}}} */
 
-/**{{{ XLog::setBasePath($path)
+/**{{{	proto public static XLog::setBasePath($path)
 */
 ZEND_METHOD(XLog, setBasePath)
 {
-	char *path;
-	int path_len;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &path, &path_len) == FAILURE){
-		RETURN_FALSE;
-	}
-	if (XLOG_G(path) == NULL){
-		XLOG_G(path) = estrndup(path, path_len);
-		RETURN_TRUE;
-	}
-
-	if (strcmp(XLOG_G(path), path) != 0){
-		efree(XLOG_G(path));	
-		XLOG_G(path) = estrndup(path, path_len);
-	}	
-	RETURN_TRUE;
+	XLOG_SET_METHOD(path);
 }
 /**}}}
 */
 
-/**{{{ Xlog::getBasePath()
+/**{{{	proto public static XLog::getBasePath()
 */
 ZEND_METHOD(XLog, getBasePath)
 {
-	if (XLOG_G(path) == NULL){
-		RETURN_STRING(XLOG_G(default_path), 1);
-	}
-	else{
-		RETURN_STRING(XLOG_G(path), 1);
-	}
+	XLOG_GET_METHOD(path);
 }
 /**}}}*/
 
-/**{{{ XLog::setLogger($logger)
+/**{{{	proto public static XLog::setApplication($application)
+*/
+ZEND_METHOD(XLog, setApplication)
+{
+	XLOG_SET_METHOD(application);
+}
+/**}}}
+*/
+
+/**{{{	proto public static XLog::getApplication()
+*/
+ZEND_METHOD(XLog, getApplication)
+{
+	XLOG_GET_METHOD(application);
+}
+/**}}}*/
+
+
+/**{{{	proto public static XLog::setLogger($logger)
 */
 ZEND_METHOD(XLog, setLogger)
 {
-	char *logger;
-	int logger_len;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &logger, &logger_len) == FAILURE){
-		RETURN_FALSE;
-	}
-	if (XLOG_G(application) == NULL){
-		XLOG_G(application) = estrndup(logger, logger_len);
-		RETURN_TRUE;
-	}
-
-	if (strcmp(XLOG_G(application), logger) != 0){
-		efree(XLOG_G(application));
-		XLOG_G(application) = estrndup(logger, logger_len);
-	}
-	RETURN_TRUE;
+	XLOG_SET_METHOD(module);
 }
 /**}}}*/
 
-/**{{{ XLog::getLastLogger()
+/**{{{	proto public static XLog::getLastLogger()
 */
 ZEND_METHOD(XLog, getLastLogger)
 {
-	if (XLOG_G(application) == NULL){
-		RETURN_STRING(XLOG_G(default_application), 1);
-	}
-	else{
-		RETURN_STRING(XLOG_G(application), 1);
-	}
+	XLOG_GET_METHOD(module);
 }
 /**}}}*/
 
-/**{{{ XLog::getBuffer()
+
+
+/**{{{	proto public static XLog::getBuffer()
 */
 ZEND_METHOD(XLog, getBuffer)
 {
@@ -198,21 +232,21 @@ ZEND_METHOD(XLog, getBuffer)
 		RETURN_NULL();
 	}
 	array_init(return_value);
-	char buf[32] = { 0 };
+	char timebuf[32] = { 0 };
 	char *tmp;
 	int tmp_len;
 	LogItem **log = XLOG_G(log);
 	for (int i = 0; i < XLOG_G(buffer); i++){
 		if (log[i] == NULL)
 			continue;
-		strftime(buf, 32, "%Y-%m-%d %H:%M:%S", localtime(&(log[i]->time)));
-		tmp_len = spprintf(&tmp, 0, "%s | %s | %s | %s", get_log_level_name(log[i]->level), buf, log[i]->application, log[i]->msg);
+		strftime(timebuf, 32, "%Y-%m-%d %H:%M:%S", localtime(&(log[i]->time)));
+		tmp_len = spprintf(&tmp, 0, "%s | %s | %s | %s | %s", get_log_level_name(log[i]->level), timebuf, log[i]->application,log[i]->module, log[i]->content);
 		add_next_index_stringl(return_value, tmp, tmp_len, 0);
 	}
 }
 /**}}}*/
 
-/**{{{ XLog::flush();
+/**{{{	proto public static XLog::flush()
 */
 ZEND_METHOD(XLog, flush)
 {
@@ -221,7 +255,7 @@ ZEND_METHOD(XLog, flush)
 }
 /**}}}*/
 
-/**{{{	XLog::debug($msg,Array $context)
+/**{{{	proto public static XLog::debug($msg, Array $content=[],$logger='')
 */
 ZEND_METHOD(XLog, debug)
 {
@@ -230,7 +264,7 @@ ZEND_METHOD(XLog, debug)
 /**}}}*/
 
 
-/**{{{	XLog::info($msg,Array $context)
+/**{{{	proto public static XLog::info($msg, Array $content=[],$logger='')
 */
 ZEND_METHOD(XLog, info)
 {
@@ -239,7 +273,7 @@ ZEND_METHOD(XLog, info)
 /**}}}*/
 
 
-/**{{{	XLog::notice($msg,Array $context)
+/**{{{	proto public static XLog::notice($msg, Array $content=[],$logger='')
 */
 ZEND_METHOD(XLog, notice)
 {
@@ -248,7 +282,7 @@ ZEND_METHOD(XLog, notice)
 /**}}}*/
 
 
-/**{{{	XLog::warning($msg,Array $context)
+/**{{{	proto public static XLog::warning($msg, Array $content=[],$logger='')
 */
 ZEND_METHOD(XLog, warning)
 {
@@ -257,7 +291,7 @@ ZEND_METHOD(XLog, warning)
 /**}}}*/
 
 
-/**{{{	XLog::error($msg,Array $context)
+/**{{{	proto public static XLog::error($msg, Array $content=[],$logger='')
 */
 ZEND_METHOD(XLog, error)
 {
@@ -266,7 +300,7 @@ ZEND_METHOD(XLog, error)
 /**}}}*/
 
 
-/**{{{	XLog::critical($msg,Array $context)
+/**{{{	proto public static XLog::critical($msg, Array $content=[],$logger='')
 */
 ZEND_METHOD(XLog, critical)
 {
@@ -275,7 +309,7 @@ ZEND_METHOD(XLog, critical)
 /**}}}*/
 
 
-/**{{{	XLog::alert($msg,Array $context)
+/**{{{	proto public static XLog::alert($msg, Array $content=[],$logger='')
 */
 ZEND_METHOD(XLog, alert)
 {
@@ -284,7 +318,7 @@ ZEND_METHOD(XLog, alert)
 /**}}}*/
 
 
-/**{{{	XLog::emergency($msg,Array $context)
+/**{{{	proto public static XLog::emergency($msg, Array $content=[],$logger='')
 */
 ZEND_METHOD(XLog, emergency)
 {
@@ -293,27 +327,26 @@ ZEND_METHOD(XLog, emergency)
 /**}}}*/
 
 
-/**{{{	XLog::log($level,$msg,Array $context)
+/**{{{	proto public static XLog::log($level,$msg, Array $content=[],$logger='')
 */
 ZEND_METHOD(XLog, log)
 {
-	char *msg;
-	int msg_len;
-	int level;
+	char *msg,*module=NULL;
+	int msg_len,level,module_len = 0;
 	zval *context = NULL;
 
 	int argc = ZEND_NUM_ARGS();
-	if (zend_parse_parameters(argc TSRMLS_CC, "ls|a", &level,&msg, &msg_len, &context) == FAILURE){
+	if (zend_parse_parameters(argc TSRMLS_CC, "ls|as", &level,&msg, &msg_len, &context,&module,&module_len) == FAILURE){
 		RETURN_FALSE;
 	}
 	if (level<0 || level>8){
 		RETURN_FALSE;
 	}
-	if (argc == 3 && context != NULL){
-		process_log_with_context(level, msg, msg_len, context TSRMLS_CC);
+	if (argc >= 3 && context != NULL){
+		process_log_with_context(level, msg, msg_len, context,module,module_len TSRMLS_CC);
 	}
 	else{
-		process_log_no_context(level, msg, msg_len TSRMLS_CC);
+		process_log_no_context(level, msg, msg_len,module,module_len TSRMLS_CC);
 	}
 	RETURN_TRUE;
 }
@@ -350,6 +383,7 @@ STD_PHP_INI_ENTRY("xlog.redis_db", "0", PHP_INI_ALL, OnUpdateLongGEZero, redis_d
 STD_PHP_INI_ENTRY("xlog.buffer_enable", "1", PHP_INI_ALL, OnUpdateBool, buffer_enable, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.buffer", "100", PHP_INI_SYSTEM, OnUpdateLongGEZero, buffer, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.host", "", PHP_INI_SYSTEM, OnUpdateString, host, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.default_module", "default", PHP_INI_SYSTEM, OnUpdateString, default_module, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.default_application", "", PHP_INI_SYSTEM, OnUpdateString, default_application, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.default_path", "/tmp", PHP_INI_SYSTEM, OnUpdateString, default_path, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_retry_interval", "600", PHP_INI_SYSTEM, OnUpdateLongGEZero, mail_retry_interval, zend_xlog_globals, xlog_globals)
@@ -365,6 +399,8 @@ zend_function_entry xlog_methods[] = {
 	ZEND_ME(XLog, getBasePath, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, setLogger, arg_info_set_logger, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, getLastLogger, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, setApplication, arg_info_set_application, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, getApplication, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, getBuffer, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, flush, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
@@ -390,6 +426,7 @@ PHP_GINIT_FUNCTION(xlog)
 	XLOG_G(log) = NULL;
 	XLOG_G(index) = 0;
 	XLOG_G(application) = NULL;
+	XLOG_G(module) = NULL;
 	XLOG_G(path) = NULL;
 	XLOG_G(file_handle) = NULL;
 }
@@ -435,11 +472,18 @@ PHP_RINIT_FUNCTION(xlog)
 {
 	XLOG_G(redis) = NULL;
 	XLOG_G(file_handle) = NULL;
+	XLOG_G(application) = NULL;
+	XLOG_G(module) = NULL;
+	XLOG_G(path) = NULL;
+	XLOG_G(index) = 0;
 	if (XLOG_G(buffer_enable)){
 		if (XLOG_G(buffer) < 1){
 			XLOG_G(buffer) = 100;
 		}
 		init_log(&XLOG_G(log), XLOG_G(buffer)  TSRMLS_CC);
+	}
+	else{
+		XLOG_G(log) = NULL;
 	}
 	if (XLOG_G(redis_retry_interval) < 10){
 		XLOG_G(redis_retry_interval) = 10;
@@ -463,19 +507,18 @@ PHP_RSHUTDOWN_FUNCTION(xlog)
 		php_stream_close(XLOG_G(redis));
 		php_stream_free(XLOG_G(redis), PHP_STREAM_FREE_RELEASE_STREAM);
 	}
-	XLOG_G(index) = 0;
 	if (XLOG_G(application) != NULL){
 		efree(XLOG_G(application));
-		XLOG_G(application) = NULL;
+	}
+	if (XLOG_G(module) != NULL){
+		efree(XLOG_G(module));
 	}
 	if (XLOG_G(path) != NULL){
 		efree(XLOG_G(path));
-		XLOG_G(path) = NULL;
 	}
 	if (XLOG_G(file_handle) != NULL){
 		zend_hash_destroy(XLOG_G(file_handle));
 		FREE_HASHTABLE(XLOG_G(file_handle));
-		XLOG_G(file_handle) = NULL;
 	}
 	return SUCCESS;
 }
