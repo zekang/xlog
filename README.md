@@ -23,7 +23,7 @@ xlog.mail_enable = 0
 
 xlog.mail_level = 8
 
-xlog.mail_backtrace_args = 1
+xlog.mail_backtrace_args = 0
 
 xlog.trace_error = 1
 
