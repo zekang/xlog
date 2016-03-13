@@ -24,6 +24,13 @@ extern zend_module_entry xlog_module_entry;
 #define phpext_xlog_ptr &xlog_module_entry
 
 #define PHP_XLOG_VERSION "0.1.0" 
+#ifdef WINDOWS
+#define XLOG_PATH_PATTERN "abcdefghijklmnopqrstuvwzxyABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.\\/:"
+#else
+#define XLOG_PATH_PATTERN "abcdefghijklmnopqrstuvwzxyABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.\\/"
+#endif
+#define XLOG_FILE_PATTERN "abcdefghijklmnopqrstuvwzxyABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-."
+
 
 #ifdef PHP_WIN32
 #	define PHP_XLOG_API __declspec(dllexport)

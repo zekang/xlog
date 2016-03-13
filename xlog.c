@@ -33,7 +33,7 @@
 #include "mail.h"
 #include "log.h"
 
-#define XLOG_SET_METHOD(name)   \
+#define XLOG_SET_METHOD(name,pattern)   \
 	char *name; \
 	int name##_len; \
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name##_len) == FAILURE){ \
@@ -42,6 +42,10 @@
 	if (name##_len < 1){ \
 		RETURN_FALSE; \
 	} \
+	if (strspn(name, pattern) != name##_len) { \
+		php_error_docref(NULL TSRMLS_CC, E_WARNING,"path is invalid,Please check!"); \
+		RETURN_FALSE; \
+	}\
 	if (XLOG_G(name) == NULL){ \
 		XLOG_G(name) = estrndup(name, name##_len); \
 		RETURN_TRUE; \
@@ -175,7 +179,7 @@ static void process_log(INTERNAL_FUNCTION_PARAMETERS,int level)
 */
 ZEND_METHOD(XLog, setBasePath)
 {
-	XLOG_SET_METHOD(path);
+	XLOG_SET_METHOD(path,XLOG_PATH_PATTERN);
 }
 /**}}}
 */
@@ -192,7 +196,7 @@ ZEND_METHOD(XLog, getBasePath)
 */
 ZEND_METHOD(XLog, setApplication)
 {
-	XLOG_SET_METHOD(application);
+	XLOG_SET_METHOD(application,XLOG_FILE_PATTERN);
 }
 /**}}}
 */
@@ -210,7 +214,7 @@ ZEND_METHOD(XLog, getApplication)
 */
 ZEND_METHOD(XLog, setLogger)
 {
-	XLOG_SET_METHOD(module);
+	XLOG_SET_METHOD(module,XLOG_FILE_PATTERN);
 }
 /**}}}*/
 
