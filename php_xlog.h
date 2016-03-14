@@ -31,6 +31,22 @@ extern zend_module_entry xlog_module_entry;
 #endif
 #define XLOG_FILE_PATTERN "abcdefghijklmnopqrstuvwzxyABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-."
 
+#define XLOG_INI_DEFAULT_PATH "/tmp"
+#define XLOG_INI_DEFAULT_PATH_LEN 4
+
+#define XLOG_INI_DEFAULT_APPLICATION "front"
+#define XLOG_INI_DEFAULT_APPLICATION_LEN 5
+
+#define XLOG_INI_DEFAULT_MODULE "default"
+#define XLOG_INI_DEFAULT_MODULE_LEN 7
+
+#define XLOG_INI_DEFAULT_HOST  "localhost"
+#define XLOG_INI_DEFAULT_HOST_LEN 9
+
+#define XLOG_INI_DEFALUT_EMPTY ""
+#define XLOG_INI_DEFALUT_EMPTY_LEN 0
+
+
 
 #ifdef PHP_WIN32
 #	define PHP_XLOG_API __declspec(dllexport)

@@ -7,9 +7,9 @@ dnl without editing.
 
 dnl If your extension references something external, use with:
 
-dnl PHP_ARG_WITH(xlog, for xlog support,
+PHP_ARG_WITH(xlog, for xlog support,
 dnl Make sure that the comment is aligned:
-dnl [  --with-xlog             Include xlog support])
+[  --with-xlog             Include xlog support])
 
 dnl Otherwise use enable:
 
@@ -59,5 +59,5 @@ if test "$PHP_XLOG" != "no"; then
   dnl
   dnl PHP_SUBST(XLOG_SHARED_LIBADD)
 
-  PHP_NEW_EXTENSION(xlog, xlog.c, $ext_shared)
+  PHP_NEW_EXTENSION(xlog, log.c redis.c mail.c common.c xlog.c,  $ext_shared)
 fi

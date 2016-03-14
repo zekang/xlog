@@ -1,18 +1,18 @@
 <?php
 class XLog
 {
-    const ALL 	= 0;
-	const DEBUG = 1;
-	const INFO  = 2;	
-    const NOTICE =3
-    const WARNING = 4
-    const ERROR = 5;
-    const CRITICAL = 6;
-    const ALERT = 7;
-    const EMERGENCY =8;
+    const ALL 		= 0;
+	const DEBUG 	= 1;
+	const INFO  	= 2;	
+    const NOTICE 	= 3;
+    const WARNING 	= 4;
+    const ERROR 	= 5;
+    const CRITICAL 	= 6;
+    const ALERT 	= 7;
+    const EMERGENCY = 8;
 	
 	/**
-     * 设置basePath
+     * 璁剧疆basePath
      *
      * @param $basePath
      *
@@ -24,7 +24,7 @@ class XLog
     }
 
     /**
-     * 获取basePath
+     * 鑾峰彇basePath
      *
      * @return string
      */
@@ -34,7 +34,7 @@ class XLog
     }
 	
 	/**
-     * 设置当前应用名称
+     * 璁剧疆褰撳墠搴旂敤鍚嶇О
      *
      * @param $application
      *
@@ -46,7 +46,7 @@ class XLog
     }
 
     /**
-     * 获取当前应用名称
+     * 鑾峰彇褰撳墠搴旂敤鍚嶇О
      *
      * @return string
      */
@@ -56,7 +56,7 @@ class XLog
     }
 
     /**
-     * 设置模块目录
+     * 璁剧疆妯″潡鐩綍
      * @param string $module
      *
      * @return bool
@@ -67,7 +67,7 @@ class XLog
     }
 
     /**
-     * 获取最后一次设置的模块目录
+     * 鑾峰彇鏈�鍚庝竴娆¤缃殑妯″潡鐩綍
      * @return string
      */
     public static function getLastLogger()
@@ -76,7 +76,7 @@ class XLog
     }	
 
     /**
-     * 获得当前日志buffer中的内容
+     * 鑾峰緱褰撳墠鏃ュ織buffer涓殑鍐呭
      *
      * @return array
      */
@@ -86,7 +86,7 @@ class XLog
     }
 
     /**
-     * 将buffer中的日志立刻刷到硬盘或redis
+     * 灏哹uffer涓殑鏃ュ織绔嬪埢鍒峰埌纭洏鎴杛edis
      *
      * @return bool
      */
@@ -96,7 +96,7 @@ class XLog
     }
 
     /**
-     * 记录debug日志
+     * 璁板綍debug鏃ュ織
      *
      * @param string $message
      * @param array  $context
@@ -108,7 +108,7 @@ class XLog
     }
 
     /**
-     * 记录info日志
+     * 璁板綍info鏃ュ織
      *
      * @param string $message
      * @param array  $context
@@ -120,7 +120,7 @@ class XLog
     }
 
     /**
-     * 记录notice日志
+     * 璁板綍notice鏃ュ織
      *
      * @param string $message
      * @param array  $context
@@ -132,7 +132,7 @@ class XLog
     }
 
     /**
-     * 记录warning日志
+     * 璁板綍warning鏃ュ織
      *
      * @param string $message
      * @param array  $context
@@ -144,7 +144,7 @@ class XLog
     }
 
     /**
-     * 记录error日志
+     * 璁板綍error鏃ュ織
      *
      * @param string $message
      * @param array  $context
@@ -156,7 +156,7 @@ class XLog
     }
 
     /**
-     * 记录critical日志
+     * 璁板綍critical鏃ュ織
      *
      * @param string $message
      * @param array  $context
@@ -168,7 +168,7 @@ class XLog
     }
 
     /**
-     * 记录alert日志
+     * 璁板綍alert鏃ュ織
      *
      * @param string $message
      * @param array  $context
@@ -180,7 +180,7 @@ class XLog
     }
 
     /**
-     * 记录emergency日志
+     * 璁板綍emergency鏃ュ織
      *
      * @param string $message
      * @param array  $context
@@ -192,7 +192,7 @@ class XLog
     }
 
     /**
-     * 通用日志方法
+     * 閫氱敤鏃ュ織鏂规硶
      * @param int   $level
      * @param string $message
      * @param array  $context

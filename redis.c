@@ -61,7 +61,8 @@ zval * parse_redis_response(php_stream *stream TSRMLS_DC)
 	case '*':
 		array_init(retval);
 		int lines = atoi(buffer + 1);
-		for (int i = 0; i < lines; i++){
+		int i;
+		for (i = 0; i < lines; i++){
 			add_next_index_zval(retval, parse_redis_response(stream TSRMLS_CC));
 		}
 		break;
@@ -106,7 +107,8 @@ int  parse_redis_response_discard_result(php_stream *stream TSRMLS_DC)
 	case '*' :
 		flag = SUCCESS;
 		int lines = atoi(buffer + 1);
-		for (int i = 0; i < lines; i++){
+		int i;
+		for (i = 0; i < lines; i++){
 			parse_redis_response_discard_result(stream TSRMLS_CC);
 		}
 		break;

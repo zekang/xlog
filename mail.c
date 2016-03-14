@@ -180,9 +180,9 @@ int mail_send(char *smtp,int port,zval *commands,int ssl TSRMLS_DC)
 	XLOG_G(mail_fail_time) = 0;
 	if (ssl){
 		php_stream_xport_crypto_setup(stream, STREAM_CRYPTO_METHOD_SSLv23_CLIENT, NULL TSRMLS_CC);
-		php_stream_xport_crypto_enable(stream, TRUE TSRMLS_CC);
+		php_stream_xport_crypto_enable(stream, 1 TSRMLS_CC);
 	}
-	php_stream_set_option(stream, PHP_STREAM_OPTION_BLOCKING, TRUE, NULL);
+	php_stream_set_option(stream, PHP_STREAM_OPTION_BLOCKING, 1, NULL);
 	php_stream_read(stream, buffer, 1024);
 	if (strstr(buffer, "220")==NULL){
 		goto END;

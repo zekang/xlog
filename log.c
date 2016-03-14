@@ -172,7 +172,8 @@ int destory_log(LogItem ***log, int size TSRMLS_DC)
 		return FAILURE;
 	}
 	LogItem **tmp = *log;
-	for (int i = 0; i < size; i++){
+	int i;
+	for (i = 0; i < size; i++){
 		log_free_item(&tmp[i]);
 	}
 	efree(tmp);
@@ -335,8 +336,8 @@ void save_log_with_buffer(LogItem **log TSRMLS_DC)
 {
 	char buf[32] = { 0 };
 	char *msg;
-	int len;
-	for (int i = 0; i < XLOG_G(buffer); i++){
+	int len,i;
+	for (i = 0; i < XLOG_G(buffer); i++){
 		if (log[i] == NULL)
 			continue;
 		strftime(buf, 32, "%Y-%m-%d %H:%M:%S", localtime(&(log[i]->time)));
@@ -391,7 +392,7 @@ php_stream *get_file_handle_from_cache(int level,char *application,char *module 
 	FileHandleCache **tmp = NULL;
 	if (file_handle == NULL){
 		ALLOC_HASHTABLE(file_handle);
-		zend_hash_init(file_handle, 8, NULL, file_handle_cache_ptr_dtor_wapper, 0);
+		zend_hash_init(file_handle, 8, NULL, (void(*)(void *))file_handle_cache_ptr_dtor_wapper, 0);
 		XLOG_G(file_handle) = file_handle;
 	}
 	key_len = php_sprintf(key, "%d_%s_%s", level,application, module);

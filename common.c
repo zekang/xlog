@@ -32,7 +32,7 @@
 */
 int split_string(const char *str, unsigned char split, char ***ret, int *count)
 {
-	int i = 0;
+	int i = 0,j;
 	const char *p = str;
 	const char *last = str;
 	char **tmp = NULL;
@@ -80,7 +80,7 @@ int split_string(const char *str, unsigned char split, char ***ret, int *count)
 	*ret = tmp;
 END:
 	if (flag != SUCCESS && tmp != NULL){
-		for (int j = 0; j < lines; j++){
+		for (j = 0; j < lines; j++){
 			if (tmp[j] != NULL){
 				efree(tmp[j]);
 			}
@@ -100,7 +100,8 @@ void split_string_free(char ***buf, int count)
 		return;
 	}
 	char **tmp = *buf;
-	for (int i = 0; i < count; i++){
+	int i;
+	for (i = 0; i < count; i++){
 		efree(tmp[i]);
 		tmp[i] = NULL;
 	}
@@ -111,7 +112,7 @@ void split_string_free(char ***buf, int count)
 
 /**{{{ int get_debug_backtrace(zval *debug,TSRMLS_D)
 */
-int get_debug_backtrace(zval *debug,TSRMLS_D)
+int get_debug_backtrace(zval *debug TSRMLS_DC)
 {
 	if (debug == NULL){
 		return FAILURE;
@@ -132,11 +133,13 @@ int  get_serialize_debug_trace(char **ret,int *ret_len TSRMLS_DC)
 	if (ret == NULL){
 		return FAILURE;
 	}
-	zend_bool flag = SUCCESS;
+	zend_bool flag = FAILURE;
 	zval debug;
+	size_t i;
 	php_serialize_data_t var_hash;
 	smart_str buf = { 0 };
 	if (get_debug_backtrace(&debug TSRMLS_CC) ==SUCCESS){
+		flag = SUCCESS;
 		PHP_VAR_SERIALIZE_INIT(var_hash);
 		zval *tmp = &debug;
 		php_var_serialize(&buf, &tmp, &var_hash TSRMLS_CC);
@@ -155,7 +158,7 @@ END:
 			*ret_len = buf.len;
 		}
 		if (strlen(buf.c) != buf.len){
-			for (size_t i = 0; i < buf.len; i++){
+			for (i = 0; i < buf.len; i++){
 				if (buf.c[i] == '\0'){
 					buf.c[i] = '*';
 				}
@@ -396,15 +399,15 @@ int strtr_array(const char *template,int template_len,zval *context,char **ret,i
 */
 int  xlog_make_log_dir(char *dir TSRMLS_DC)
 {
-	if (_access(dir, 0)==0){ //Existence only
+	if (access(dir, 0)==0){ //Existence only
 		/*Write permission*/
-		return _access(dir, 2) == 0 ? SUCCESS : FAILURE;
+		return access(dir, 2) == 0 ? SUCCESS : FAILURE;
 	}
 	zval *zcontext = NULL;
 	long mode = 0777;
 	zend_bool recursive = 1;
 	php_stream_context *context;
-	_umask(1);
+	umask(1);
 	context = php_stream_context_from_zval(zcontext, 0);
 	
 	if (!php_stream_mkdir(dir, mode, (recursive ? PHP_STREAM_MKDIR_RECURSIVE : 0) | REPORT_ERRORS, context)) {

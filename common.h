@@ -24,6 +24,11 @@
 #define XLOG_CONTEXT_KEY_LEFT_DEILM		  '{'
 #define XLOG_CONTEXT_KEY_RIGHT_DEILM	  '}'
 
+#ifdef WINDOWS
+#define access _access
+#define umask _umask
+#endif
+
 int  split_string(const char *str, unsigned char split, char ***buf, int *count);
 void split_string_free(char ***buf, int count);
 void (*old_error_cb)(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args);
@@ -33,7 +38,7 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC);
 void init_error_hooks(TSRMLS_D);
 void restore_error_hooks(TSRMLS_D);
 
-int  get_debug_backtrace(zval *debug, TSRMLS_D);
+int  get_debug_backtrace(zval *debug TSRMLS_DC);
 int  get_serialize_debug_trace(char **ret, int *ret_len TSRMLS_DC);
 int  get_print_data(char **ret, int *ret_len TSRMLS_DC);
 int  get_var_export_data(char **ret, int *ret_len TSRMLS_DC);
