@@ -112,6 +112,7 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	zend_bool   file_enable;
 	char  *default_path;
 
+	int   level;
 ZEND_END_MODULE_GLOBALS(xlog)
 
 #ifdef ZTS

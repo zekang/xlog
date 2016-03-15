@@ -215,10 +215,23 @@ int save_to_redis(int level, char *application,char *module, char *content TSRML
 			);
 		XLOG_G(redis) = stream;
 		if (stream != NULL){
+			int auth_len = strlen(XLOG_G(redis_auth));
+			if (auth_len > 0){
+				zval *result =NULL;
+				command_len = build_redis_command(&command, "AUTH", 4, "s", XLOG_G(redis_auth),auth_len);
+				execute_redis_command(stream, &result, command, command_len TSRMLS_CC);
+				if (result && !zend_is_true(result)){
+					php_error_docref(NULL TSRMLS_CC, E_WARNING, "the redis auth password is invalid");
+					zval_dtor(result);
+					efree(result);
+					return FAILURE;
+				}
+			}
 			command_len = build_redis_command(&command, "SELECT", 6, "d", XLOG_G(redis_db));
 			execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
 			XLOG_G(redis_fail_time) = 0;
 		}
+
 		else{
 			XLOG_G(redis_fail_time) = now;
 			if (errorstr){
@@ -303,7 +316,7 @@ void save_to_file(int level, char*application,char *module, char *content,int co
 */
 void save_log_no_buffer(int level, char* module, char *content ,short flag TSRMLS_DC)
 {
-	if (level < 0 || level >8 || content == NULL){
+	if (level < XLOG_LEVEL_ALL || level >XLOG_LEVEL_EMERGENCY || content == NULL){
 		return;
 	}
 	char buf[32] = { 0 };
