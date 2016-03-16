@@ -401,7 +401,6 @@ php_stream *get_file_handle_from_cache(int level,char *application,char *module 
 	char key[256] = { 0 };
 	int key_len;
 	FileHandleCache *cache = NULL;
-	php_stream *stream = NULL;
 	FileHandleCache **tmp = NULL;
 	if (file_handle == NULL){
 		ALLOC_HASHTABLE(file_handle);
@@ -438,7 +437,7 @@ php_stream *get_file_handle_from_cache(int level,char *application,char *module 
 		cache->stream = NULL;
 		zend_hash_add(file_handle, key, key_len + 1, &cache,sizeof(FileHandleCache **), NULL);
 		if (xlog_make_log_dir(dir TSRMLS_CC) == SUCCESS){
-			cache->stream = stream = php_stream_open_wrapper(file, "a", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
+			cache->stream = php_stream_open_wrapper(file, "a", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
 		}
 		efree(dir);
 	}

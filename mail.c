@@ -151,7 +151,7 @@ int mail_send(char *smtp,int port,zval *commands,int ssl TSRMLS_DC)
 	php_stream *stream = NULL;
 	char buffer[1024];
 	php_sprintf(buffer, "%s:%d", smtp, port);
-	struct timeval tv = { 1, 0 };
+	struct timeval tv = { 2, 0 };
 	char *errorstr = NULL;
 	int errorno;
 	time_t now = time(NULL);
@@ -183,8 +183,10 @@ int mail_send(char *smtp,int port,zval *commands,int ssl TSRMLS_DC)
 		php_stream_xport_crypto_enable(stream, 1 TSRMLS_CC);
 	}
 	php_stream_set_option(stream, PHP_STREAM_OPTION_BLOCKING, 1, NULL);
+	php_stream_set_option(stream, PHP_STREAM_OPTION_READ_TIMEOUT, 0, &tv);
+	buffer[0] = '\0';
 	php_stream_read(stream, buffer, 1024);
-	if (strstr(buffer, "220")==NULL){
+	if (buffer[0] == '\0' || strstr(buffer, "220") == NULL){
 		goto END;
 	}
 	zval **tmp;

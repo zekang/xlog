@@ -117,7 +117,11 @@ int get_debug_backtrace(zval *debug TSRMLS_DC)
 	if (debug == NULL){
 		return FAILURE;
 	}
+#if ZEND_MODULE_API_NO >= 20100525
 	zend_fetch_debug_backtrace(debug, 1, XLOG_G(mail_backtrace_args) ? DEBUG_BACKTRACE_PROVIDE_OBJECT : DEBUG_BACKTRACE_IGNORE_ARGS, 0 TSRMLS_CC);
+#else
+	zend_fetch_debug_backtrace(debug, 1, XLOG_G(mail_backtrace_args) ? DEBUG_BACKTRACE_PROVIDE_OBJECT : DEBUG_BACKTRACE_IGNORE_ARGS TSRMLS_CC);
+#endif
 	if (zend_hash_num_elements(Z_ARRVAL_P(debug)) > 0){
 		return SUCCESS;
 	}

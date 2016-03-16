@@ -202,4 +202,22 @@ class XLog
     {
 
     }
+
+    /**
+     * 获取当前redis和mail网络状态
+     * @return array
+     */
+    public static function status()
+    {
+        return array();
+    }
+
+    /**
+     * 重置redis和mail状态
+     * @return bool
+     */
+    public static function reset()
+    {
+        return true;
+    }
 }

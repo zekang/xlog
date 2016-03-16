@@ -383,7 +383,27 @@ ZEND_METHOD(XLog, log)
 }
 /**}}}*/
 
+/**{{{	proto public static XLog::status()
+*/
+ZEND_METHOD(XLog, status)
+{
+	array_init(return_value);
+	add_assoc_long(return_value, "redis_fail_time", XLOG_G(redis_fail_time));
+	add_assoc_long(return_value, "mail_fail_time", XLOG_G(mail_fail_time));
+	add_assoc_long(return_value, "redis_retry_interval", XLOG_G(redis_retry_interval));
+	add_assoc_long(return_value, "mail_tretry_interval", XLOG_G(mail_retry_interval));
+}
+/**}}}*/
 
+/**{{{	proto public static XLog::reset()
+*/
+ZEND_METHOD(XLog, reset)
+{
+	XLOG_G(redis_fail_time) = 0;
+	XLOG_G(mail_fail_time) = 0;
+	RETURN_TRUE;
+}
+/**}}}*/
 
 #ifdef COMPILE_DL_XLOG
 ZEND_GET_MODULE(xlog)
@@ -419,7 +439,7 @@ STD_PHP_INI_ENTRY("xlog.default_application", XLOG_INI_DEFAULT_APPLICATION, PHP_
 STD_PHP_INI_ENTRY("xlog.default_path", XLOG_INI_DEFAULT_PATH, PHP_INI_SYSTEM, OnUpdateString, default_path, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_retry_interval", "600", PHP_INI_SYSTEM, OnUpdateLongGEZero, mail_retry_interval, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.redis_retry_interval", "600", PHP_INI_SYSTEM, OnUpdateLongGEZero, redis_retry_interval, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.level", 0, PHP_INI_ALL, OnUpdateLong, level, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.level", "0", PHP_INI_ALL, OnUpdateLong, level, zend_xlog_globals, xlog_globals)
 PHP_INI_END()
 
 /* }}} */
@@ -434,7 +454,7 @@ zend_function_entry xlog_methods[] = {
 	ZEND_ME(XLog, getApplication, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, getBuffer, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, flush, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-	ZEND_ME(XLog, debug, arg_info_log_common, ZEND_ACC_PUBLIC |ZEND_ACC_STATIC)
+	ZEND_ME(XLog, debug, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, notice, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, info, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, warning, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -442,7 +462,9 @@ zend_function_entry xlog_methods[] = {
 	ZEND_ME(XLog, critical, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, alert, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, emergency, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-	ZEND_ME(XLog, log,    arg_info_log, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, log, arg_info_log, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, status, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(XLog, reset, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	PHP_FE_END
 };
 
