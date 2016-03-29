@@ -90,4 +90,5 @@ void		save_log_with_buffer(LogItem **log TSRMLS_DC);
 char*		get_log_level_name(int level);
 php_stream *get_file_handle_from_cache(int level, char *application, char *module TSRMLS_DC);
 void		file_handle_cache_ptr_dtor_wapper(FileHandleCache **cache);
+zend_bool	rotate_file(const char *filename, int len, int max TSRMLS_DC);
 #endif

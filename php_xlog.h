@@ -70,20 +70,7 @@ PHP_MINFO_FUNCTION(xlog);
 /*Declare  global variables*/
 
 ZEND_BEGIN_MODULE_GLOBALS(xlog)
-	time_t redis_fail_time;
-	time_t mail_fail_time;
-
-	php_stream	 *redis;
-	LogItem **log;
-	HashTable *file_handle;
-	char  *application;
-	char  *module;
-	char  *path;
-	int	  index;
-
-	zend_bool   trace_error;
-	zend_bool   trace_exception;
-
+	/**mail*/
 	zend_bool	mail_enable;
 	int			mail_level;
 	zend_bool   mail_ssl;
@@ -96,23 +83,43 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	char *mail_to;
 	zend_bool mail_backtrace_args;
 	int   mail_retry_interval;
+	time_t mail_fail_time;
 
+	/**redis*/
 	zend_bool   redis_enable;
 	char  *redis_host;
 	int    redis_port;
 	char  *redis_auth;
 	int	   redis_db;
 	int    redis_retry_interval;
+	time_t redis_fail_time;
+	
+	
+	/**file*/
+	zend_bool   file_enable;
+	zend_bool rotate_enable;
+	int rotate_size;
+	int rotate_max;
+	char  *default_path;
 
+	/**public*/
 	char  *host;
 	char  *default_application;
 	char  *default_module;
-	int	   buffer;
-	zend_bool   buffer_enable;
-	zend_bool   file_enable;
-	char  *default_path;
-
+	zend_bool   trace_error;
+	zend_bool   trace_exception;
 	int   level;
+	zend_bool   buffer_enable;
+	int	   buffer;
+
+
+	php_stream	 *redis;
+	LogItem **log;
+	HashTable *file_handle;
+	char  *application;
+	char  *module;
+	char  *path;
+	int	  index;
 ZEND_END_MODULE_GLOBALS(xlog)
 
 #ifdef ZTS

@@ -402,6 +402,7 @@ php_stream *get_file_handle_from_cache(int level,char *application,char *module 
 	int key_len;
 	FileHandleCache *cache = NULL;
 	FileHandleCache **tmp = NULL;
+	struct stat sb = { 0 };
 	if (file_handle == NULL){
 		ALLOC_HASHTABLE(file_handle);
 		zend_hash_init(file_handle, 8, NULL, (void(*)(void *))file_handle_cache_ptr_dtor_wapper, 0);
@@ -423,13 +424,19 @@ php_stream *get_file_handle_from_cache(int level,char *application,char *module 
 			XLOG_DIRECTORY_SEPARATOR,
 			module
 			);
-		//level.day.log
-		spprintf(&file, 0, "%s%c%s.%s.log", 
+		//dir.level.day.log
+		int len = spprintf(&file, 0, "%s%c%s.%s.log", 
 			dir, 
 			XLOG_DIRECTORY_SEPARATOR, 
 			get_log_level_name(level), 
 			day);
-		
+		if (XLOG_G(rotate_enable)){
+			if (VCWD_STAT(file, &sb) == 0){
+				if (sb.st_size > XLOG_G(rotate_size) * 1024){
+					rotate_file(file, len, XLOG_G(rotate_max) TSRMLS_CC);
+				}
+			}
+		}
 		cache = (FileHandleCache *)emalloc(sizeof(FileHandleCache)* 1);
 		cache->filename = file;
 		cache->level = level;
@@ -469,5 +476,42 @@ void file_handle_cache_ptr_dtor_wapper(FileHandleCache **pCache)
 		php_stream_free(cache->stream, PHP_STREAM_FREE_RELEASE_STREAM);
 	}
 	efree(cache);
+}
+/**}}}*/
+
+/**{{{ zend_bool rotate_file(const char *filename,int len,int max TSRMLS_DC);
+*/
+zend_bool rotate_file(const char *filename, int len,int max TSRMLS_DC)
+{
+	int i;
+	char source[256];
+	char dest[256];
+	char *oldname;
+	
+	if (filename == NULL || len > 240 || len < 1 || max < 1) {
+		return FAILURE;
+	}
+	for (i = max; i>=0; i--){
+		if (i == 0){
+			oldname = filename;
+		}
+		else{
+			php_sprintf(source, "%s.%d", filename, i);
+			oldname = source;
+		}
+		struct stat sb = { 0 };
+		if (VCWD_STAT(oldname, &sb) == 0){
+			if (S_ISREG(sb.st_mode)){
+				if (i == max){
+					VCWD_UNLINK(oldname);
+				}
+				else{
+					php_sprintf(dest, "%s.%d", filename, i+1);
+					VCWD_RENAME(oldname, dest);
+				}
+			}
+		}
+	}
+	return  SUCCESS;
 }
 /**}}}*/

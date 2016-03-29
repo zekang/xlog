@@ -54,3 +54,10 @@ xlog.host = localhost
 xlog.redis_retry_interval = 60
 
 xlog.mail_retry_interval = 60
+
+xlog.rotate_enable =1
+
+xlog.rotate_max = 20
+
+xlog.rotate_size = 15
+
