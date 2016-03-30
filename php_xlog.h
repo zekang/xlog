@@ -47,6 +47,18 @@ extern zend_module_entry xlog_module_entry;
 #define XLOG_INI_DEFALUT_EMPTY_LEN 0
 
 
+#ifndef PHP_FE_END
+#define ZEND_FE_END            { NULL, NULL, NULL, 0, 0 }
+#define PHP_FE_END ZEND_FE_END
+#endif
+
+#ifndef DEBUG_BACKTRACE_PROVIDE_OBJECT
+#define DEBUG_BACKTRACE_PROVIDE_OBJECT (1<<0)
+#endif
+
+#ifndef DEBUG_BACKTRACE_IGNORE_ARGS
+#define DEBUG_BACKTRACE_IGNORE_ARGS    (1<<1)
+#endif
 
 #ifdef PHP_WIN32
 #	define PHP_XLOG_API __declspec(dllexport)
