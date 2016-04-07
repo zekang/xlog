@@ -412,9 +412,9 @@ int strtr_array(const char *template,int template_len,zval *context,char **ret,i
 */
 int  xlog_make_log_dir(char *dir TSRMLS_DC)
 {
-	if (access(dir, 0)==0){ //Existence only
+	if (VCWD_ACCESS(dir, 0) == 0){ //Existence only
 		/*Write permission*/
-		return access(dir, 2) == 0 ? SUCCESS : FAILURE;
+		return VCWD_ACCESS(dir, 2) == 0 ? SUCCESS : FAILURE;
 	}
 	zval *zcontext = NULL;
 	long mode = 0777;

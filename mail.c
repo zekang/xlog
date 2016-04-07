@@ -240,7 +240,7 @@ static void update_mail_stategy_file(char *file,int total_count,int pos,ErrorLin
 	php_stream_write(stream, (char *)&total_count, sizeof(int *));
 	if (pos && line != NULL){
 		php_stream_seek(stream, 0 + pos, SEEK_SET);
-		php_stream_write(stream, (char *)&line, ERROR_LINE_SIZE);
+		php_stream_write(stream, (char *)line, ERROR_LINE_SIZE);
 	}
 	php_stream_lock(stream, PHP_LOCK_UN - 1);
 	php_stream_close(stream);
@@ -252,6 +252,7 @@ static void update_mail_stategy_file(char *file,int total_count,int pos,ErrorLin
 int mail_strategy_file(int level, const char *application, const char *module, const char *error_str, int error_no TSRMLS_DC)
 {
 	const char *tmpdir = php_get_temporary_directory();
+	tmpdir = XLOG_G(path) == NULL ? XLOG_G(default_path) : XLOG_G(path);
 	char buf[256] = { 0 };
 	int len = -1, day = 0, count = 1,total_count=1, log_day = 0, error_len = min(strlen(error_str), ERROR_MSG_MAX_LEN);
 	int i = 0,pos=0;
@@ -265,8 +266,7 @@ int mail_strategy_file(int level, const char *application, const char *module, c
 	CHECK_AND_SET_VALUE_IF_NULL(application, len, application, default_application);
 	php_sprintf(buf, "%s%cxlog_%s_%s_%s_%d.data", tmpdir, XLOG_DIRECTORY_SEPARATOR, XLOG_G(host), application, module, level);
 	//check file exists
-	struct stat sb = { 0 };
-	zend_bool exists = VCWD_STAT(buf, &sb) == 0 ? 1 : 0;
+	zend_bool exists = VCWD_ACCESS(buf, 0) == 0 ? 1 : 0;
 	php_stream *stream = php_stream_open_wrapper(buf, exists ? "rb+" : "wb", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
 	int flag = FAILURE;
 	if (!stream){
@@ -283,7 +283,6 @@ int mail_strategy_file(int level, const char *application, const char *module, c
 			for (i = 0; i < count; i++){
 				php_stream_read(stream, (char*)&line, ERROR_LINE_SIZE);
 				if (line.error_no == error_no && line.hash == hash_value){
-					php_printf("%d\n", line.count);
 					php_stream_read(stream, buf, line.len);
 					buf[line.len] = '\0';
 					if (strncmp(error_str, buf, line.len) == 0){
@@ -294,17 +293,20 @@ int mail_strategy_file(int level, const char *application, const char *module, c
 						goto END;
 					}
 				}
+				else{
+					php_stream_seek(stream, line.len, SEEK_CUR);
+				}
 				pos += ERROR_LINE_SIZE;
 				pos += line.len;
 			}
 			php_stream_seek(stream, 0, SEEK_END);
 		}
 		else{
-			flag = SUCCESS;
 			php_stream_close(stream);
 			php_stream_free(stream, PHP_STREAM_FREE_RELEASE_STREAM);
 			stream = php_stream_open_wrapper(buf, "wb", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
 			if (!stream){
+				flag = SUCCESS;
 				goto END;
 			}
 			count = 1;
@@ -315,7 +317,6 @@ int mail_strategy_file(int level, const char *application, const char *module, c
 	else{
 		php_stream_write(stream, (char *)&day, sizeof(int *));
 		php_stream_write(stream, (char *)&count, sizeof(int *));
-		flag = SUCCESS;
 	}
 	
 	line.count = 1;
@@ -325,6 +326,7 @@ int mail_strategy_file(int level, const char *application, const char *module, c
 	line.error_no = error_no;
 	php_stream_write(stream, (char *)&line, ERROR_LINE_SIZE);
 	php_stream_write(stream, error_str, error_len);
+	flag = SUCCESS;
 END:
 	if (stream){
 		php_stream_close(stream);
