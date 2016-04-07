@@ -15,11 +15,14 @@
 | Author:  wanghouqian <whq654321@126.com>                             |
 +----------------------------------------------------------------------+
 */
+#define _CRT_SECURE_NO_WARNINGS
 #include "php.h"
+#include "php_open_temporary_file.h"
 #include "php_xlog.h"
 #include "mail.h"
 #include "ext/standard/php_smart_str.h"
 #include "ext/standard/base64.h"
+#include "ext/standard/flock_compat.h"
 #include "common.h"
 
 /**{{{
@@ -221,5 +224,121 @@ END:
 		efree(errorstr);
 	}
 	return ret;
+}
+/**}}}*/
+
+static void update_mail_stategy_file(char *file,int total_count,int pos,ErrorLine *line TSRMLS_DC)
+{
+	php_stream *stream = php_stream_open_wrapper(file, "rb+", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
+	if (!stream){
+		return;
+	}
+	if (php_stream_lock(stream, PHP_LOCK_EX - 1)){
+		return;
+	}
+	php_stream_seek(stream, 0 + sizeof(int *), SEEK_SET);
+	php_stream_write(stream, (char *)&total_count, sizeof(int *));
+	if (pos && line != NULL){
+		php_stream_seek(stream, 0 + pos, SEEK_SET);
+		php_stream_write(stream, (char *)&line, ERROR_LINE_SIZE);
+	}
+	php_stream_lock(stream, PHP_LOCK_UN - 1);
+	php_stream_close(stream);
+	php_stream_free(stream, PHP_STREAM_FREE_RELEASE_STREAM);
+}
+
+/*{{{ int mail_strategy_file(int level, const char *application, const char *module, const char *error_str, int error_no TSRMLS_DC)
+*/
+int mail_strategy_file(int level, const char *application, const char *module, const char *error_str, int error_no TSRMLS_DC)
+{
+	const char *tmpdir = php_get_temporary_directory();
+	char buf[256] = { 0 };
+	int len = -1, day = 0, count = 1,total_count=1, log_day = 0, error_len = min(strlen(error_str), ERROR_MSG_MAX_LEN);
+	int i = 0,pos=0;
+	zend_bool found = 0;
+	ErrorLine line = { 0 };
+	uint hash_value = zend_hash_func(error_str, error_len);
+	time_t now = time(NULL);
+	strftime(buf, sizeof(buf), "%Y%m%d", localtime(&now));
+	day = atoi(buf);
+	CHECK_AND_SET_VALUE_IF_NULL(module, len, module, default_module);
+	CHECK_AND_SET_VALUE_IF_NULL(application, len, application, default_application);
+	php_sprintf(buf, "%s%cxlog_%s_%s_%s_%d.data", tmpdir, XLOG_DIRECTORY_SEPARATOR, XLOG_G(host), application, module, level);
+	//check file exists
+	struct stat sb = { 0 };
+	zend_bool exists = VCWD_STAT(buf, &sb) == 0 ? 1 : 0;
+	php_stream *stream = php_stream_open_wrapper(buf, exists ? "rb+" : "wb", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
+	int flag = FAILURE;
+	if (!stream){
+		return flag;
+	}
+	if (exists){
+		php_stream_seek(stream, 0, SEEK_SET);
+		php_stream_read(stream, (char*)&log_day, sizeof(int *));
+		php_stream_read(stream, (char*)&count, sizeof(int *));
+		total_count = count + 1;
+		if (log_day == day){
+			pos += sizeof(int *);
+			pos += sizeof(int *);
+			for (i = 0; i < count; i++){
+				php_stream_read(stream, (char*)&line, ERROR_LINE_SIZE);
+				if (line.error_no == error_no && line.hash == hash_value){
+					php_printf("%d\n", line.count);
+					php_stream_read(stream, buf, line.len);
+					buf[line.len] = '\0';
+					if (strncmp(error_str, buf, line.len) == 0){
+						found = 1;
+						if (line.count % 10 == 0){
+							flag = SUCCESS;
+						}
+						goto END;
+					}
+				}
+				pos += ERROR_LINE_SIZE;
+				pos += line.len;
+			}
+			php_stream_seek(stream, 0, SEEK_END);
+		}
+		else{
+			flag = SUCCESS;
+			php_stream_close(stream);
+			php_stream_free(stream, PHP_STREAM_FREE_RELEASE_STREAM);
+			stream = php_stream_open_wrapper(buf, "wb", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
+			if (!stream){
+				goto END;
+			}
+			count = 1;
+			php_stream_write(stream, (char *)&day, sizeof(int *));
+			php_stream_write(stream, (char *)&count, sizeof(int *));
+		}
+	}
+	else{
+		php_stream_write(stream, (char *)&day, sizeof(int *));
+		php_stream_write(stream, (char *)&count, sizeof(int *));
+		flag = SUCCESS;
+	}
+	
+	line.count = 1;
+	line.hash = hash_value;
+	line.len = error_len;
+	line.time = now;
+	line.error_no = error_no;
+	php_stream_write(stream, (char *)&line, ERROR_LINE_SIZE);
+	php_stream_write(stream, error_str, error_len);
+END:
+	if (stream){
+		php_stream_close(stream);
+		php_stream_free(stream, PHP_STREAM_FREE_RELEASE_STREAM);
+	}
+	if (total_count > 1){
+		php_sprintf(buf, "%s%cxlog_%s_%s_%s_%d.data", tmpdir, XLOG_DIRECTORY_SEPARATOR, XLOG_G(host), application, module, level);
+		if (found){
+			line.time = now;
+			line.count++;
+			total_count--;
+		}
+		update_mail_stategy_file(buf, total_count, (found ? pos : 0), (found ? &line : NULL) TSRMLS_CC);
+	}
+	return flag;
 }
 /**}}}*/

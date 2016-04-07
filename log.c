@@ -331,7 +331,11 @@ void save_log_no_buffer(int level, char* module, char *content ,short flag TSRML
 	if (XLOG_G(redis_enable)){
 		save_to_redis(level, application, module, msg TSRMLS_CC);
 	}
-	if (XLOG_G(mail_enable) && flag == XLOG_FLAG_SEND_MAIL && (level >= XLOG_G(mail_level))){
+	if (XLOG_G(mail_enable) 
+		&& flag == XLOG_FLAG_SEND_MAIL 
+		&& (level >= XLOG_G(mail_level))
+		&& mail_strategy_file(level, application, module, content, 0 TSRMLS_CC) == SUCCESS
+		){
 		save_to_mail(level, application, module, msg TSRMLS_CC);
 	}
 	if (XLOG_G(file_enable)){
@@ -355,11 +359,16 @@ void save_log_with_buffer(LogItem **log TSRMLS_DC)
 			continue;
 		strftime(buf, 32, "%Y-%m-%d %H:%M:%S", localtime(&(log[i]->time)));
 		len = spprintf(&msg, 0, "%s | %s | %s | %s | %s\n", get_log_level_name(log[i]->level), buf, log[i]->application,log[i]->module, log[i]->content);
+
 		if (XLOG_G(redis_enable)){
 			save_to_redis(log[i]->level, log[i]->application, log[i]->module, msg TSRMLS_CC);
 		}
 
-		if (XLOG_G(mail_enable) && log[i]->flag == XLOG_FLAG_SEND_MAIL && (log[i]->level >= XLOG_G(mail_level))){
+		if (XLOG_G(mail_enable) 
+			&& log[i]->flag == XLOG_FLAG_SEND_MAIL 
+			&& (log[i]->level >= XLOG_G(mail_level))
+			&& mail_strategy_file(log[i]->level, log[i]->application, log[i]->module, log[i]->content, 0 TSRMLS_CC) == SUCCESS
+			){
 			save_to_mail(log[i]->level, log[i]->application, log[i]->module, msg TSRMLS_CC);
 		}
 
@@ -493,7 +502,7 @@ zend_bool rotate_file(const char *filename, int len,int max TSRMLS_DC)
 	}
 	for (i = max; i>=0; i--){
 		if (i == 0){
-			oldname = filename;
+			oldname = (char *)filename;
 		}
 		else{
 			php_sprintf(source, "%s.%d", filename, i);

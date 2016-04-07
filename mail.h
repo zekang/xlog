@@ -17,7 +17,17 @@
 */
 #ifndef MAIL_H
 #define MAIL_H
-
+struct _error_line
+{
+	time_t time;
+	uint hash;
+	size_t len;
+	int count;
+	int error_no;
+};
+typedef struct _error_line ErrorLine;
+#define ERROR_LINE_SIZE sizeof(ErrorLine)
+#define ERROR_MSG_MAX_LEN 250
 #define ADD_MAIL_COMMAND(array,command,command_len,duplicate, code) \
 	do{ \
 		zval *__tmp;			\
@@ -31,4 +41,5 @@
 
 int build_mail_commands(zval **result, char *username, char *password, char *from, char *fromName, char *to, char *subject, char *body TSRMLS_DC);
 int mail_send(char *smtp, int port, zval *commands, int ssl TSRMLS_DC);
+int mail_strategy_file(int level, const char *application, const char *module, const char *error_str, int error_no TSRMLS_DC);
 #endif // MAIL_H

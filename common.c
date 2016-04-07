@@ -27,6 +27,7 @@
 #include "standard/php_smart_str.h"
 #include "php_output.h"
 #include "log.h"
+#include "mail.h"
 
 /**{{{ int split_string(const char *str, unsigned char split, char ***ret, int *count)
 */
@@ -255,7 +256,9 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 					efree(msg);
 				}
 			}
-			if (XLOG_G(mail_enable) && (get_print_data(&msg, NULL TSRMLS_CC) == SUCCESS)){
+			if (XLOG_G(mail_enable) 
+				&& mail_strategy_file(XLOG_LEVEL_EMERGENCY, NULL, NULL, error_filename,error_lineno TSRMLS_CC) == SUCCESS
+				&& (get_print_data(&msg, NULL TSRMLS_CC) == SUCCESS)){
 				spprintf(&format_msg, 0, "<h3>%s</h3>\n<pre>%s</pre>", error_msg, msg);
 				save_to_mail(XLOG_LEVEL_EMERGENCY,NULL,NULL, format_msg TSRMLS_CC);
 				efree(msg);
@@ -286,13 +289,19 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 	code = zend_read_property(default_ce, exception, "code", sizeof("code") - 1, 0 TSRMLS_CC);
 
 	char *errmsg;
+	int mail_send_flag = XLOG_FLAG_NO_SEND_MAIL;
+	
+	if (XLOG_G(mail_enable)){
+		mail_send_flag = mail_strategy_file(XLOG_LEVEL_EMERGENCY, NULL, NULL, Z_STRVAL_P(file), Z_LVAL_P(line) TSRMLS_CC) == SUCCESS ? XLOG_FLAG_SEND_MAIL : XLOG_FLAG_NO_SEND_MAIL;
+	}
 	spprintf(&errmsg, 0, "%s:%d:%s", Z_STRVAL_P(file), Z_LVAL_P(line), Z_STRVAL_P(message));
+
 	if (XLOG_G(buffer_enable) > 0){
-		add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, errmsg, XLOG_FLAG_SEND_MAIL TSRMLS_CC);
+		add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, errmsg, mail_send_flag TSRMLS_CC);
 		XLOG_G(index)++;
 	}
 	else{
-		save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, errmsg, XLOG_FLAG_SEND_MAIL TSRMLS_CC);
+		save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, errmsg, mail_send_flag TSRMLS_CC);
 		efree(errmsg);
 	}
 

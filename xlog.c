@@ -73,14 +73,14 @@
 	}
 
 #define XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(name,len,pattern) do {\
-	size_t _len = strlen(XLOG_G(name)); \
-	size_t spnlen = strspn(XLOG_G(name), pattern);\
-	if (spnlen != _len){\
-		XLOG_G(name)[spnlen] = '\0';\
+	size_t _len = strlen(name); \
+	size_t spnlen = strspn(name, pattern); \
+	if (spnlen != _len){ \
+		name[spnlen] = '\0'; \
 		break; \
 	} \
-	if (_len > len){\
-			XLOG_G(name)[len] = '\0'; \
+	if (_len > len){ \
+		name[len] = '\0'; \
 	} \
 }while (0);
 ZEND_DECLARE_MODULE_GLOBALS(xlog)
@@ -184,18 +184,20 @@ static void process_log(INTERNAL_FUNCTION_PARAMETERS,int level)
 	int msg_len, module_len = 0;
 	zval *context = NULL;
 	int argc = ZEND_NUM_ARGS();
+	char real_module[64] = { 0 };
 	if (level < XLOG_G(level)){
 		return;
 	}
 	if (zend_parse_parameters(argc TSRMLS_CC, "s|as", &msg, &msg_len, &context,&module,&module_len) == FAILURE){
 		RETURN_FALSE;
 	}
-
-	if (argc >= 2 && context != NULL){
-		process_log_with_context(level, msg, msg_len, context,module,module_len TSRMLS_CC);
+	memcpy(real_module, module, min(60,module_len));
+	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(real_module, 60, XLOG_FILE_PATTERN);
+	if (argc >= 2 && context != NULL && Z_TYPE_P(context) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(context))>0){
+		process_log_with_context(level, msg, msg_len, context, real_module, module_len TSRMLS_CC);
 	}
 	else{
-		process_log_no_context(level, msg, msg_len, module,module_len TSRMLS_CC);
+		process_log_no_context(level, msg, msg_len, real_module, module_len TSRMLS_CC);
 	}
 	RETURN_TRUE;
 }
@@ -552,12 +554,12 @@ PHP_RINIT_FUNCTION(xlog)
 	if (XLOG_G(mail_retry_interval) < 10){
 		XLOG_G(mail_retry_interval) = 10;
 	}
-	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(default_path, 512, XLOG_PATH_PATTERN);
-	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(default_application, 60, XLOG_FILE_PATTERN);
-	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(default_module, 60, XLOG_FILE_PATTERN);
-	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(host, 60, XLOG_FILE_PATTERN);
-	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(redis_host, 50, XLOG_FILE_PATTERN);
-	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(mail_smtp, 512, XLOG_FILE_PATTERN);
+	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(default_path), 512, XLOG_PATH_PATTERN);
+	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(default_application), 60, XLOG_FILE_PATTERN);
+	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(default_module), 60, XLOG_FILE_PATTERN);
+	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(host), 60, XLOG_FILE_PATTERN);
+	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(redis_host), 50, XLOG_FILE_PATTERN);
+	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(mail_smtp), 512, XLOG_FILE_PATTERN);
 	return SUCCESS;
 }
 /* }}} */
