@@ -46,6 +46,13 @@ extern zend_module_entry xlog_module_entry;
 #define XLOG_INI_DEFALUT_EMPTY ""
 #define XLOG_INI_DEFALUT_EMPTY_LEN 0
 
+#ifndef min
+#define min(a,b)    (((a) < (b)) ? (a) : (b))
+#endif
+
+#ifndef max
+#define max(a,b)    (((a) > (b)) ? (a) : (b))
+#endif
 
 #ifndef PHP_FE_END
 #define ZEND_FE_END            { NULL, NULL, NULL, 0, 0 }
