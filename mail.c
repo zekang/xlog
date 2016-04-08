@@ -18,13 +18,13 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "php.h"
 #include "php_open_temporary_file.h"
-#include "php_xlog.h"
-#include "mail.h"
 #include "ext/standard/php_smart_str.h"
 #include "ext/standard/base64.h"
 #include "ext/standard/flock_compat.h"
-#include "common.h"
 #include "ext/standard/php_var.h"
+#include "php_xlog.h"
+#include "common.h"
+#include "mail.h"
 /**{{{
 int build_mail_commands(zval **ret,char *username,char *password,char *from,char *fromName,char *to ,char *subject,char *body TSRMLS_DC)
 */
