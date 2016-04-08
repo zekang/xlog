@@ -27,7 +27,7 @@ struct _error_line
 };
 typedef struct _error_line ErrorLine;
 #define ERROR_LINE_SIZE sizeof(ErrorLine)
-#define ERROR_MSG_MAX_LEN 250
+#define ERROR_MSG_MAX_LEN 256
 #define ADD_MAIL_COMMAND(array,command,command_len,duplicate, code) \
 	do{ \
 		zval *__tmp;			\
@@ -37,7 +37,8 @@ typedef struct _error_line ErrorLine;
 		add_next_index_long(__tmp, (code)); \
 		add_next_index_zval((array), __tmp); \
 	} while (0);
-
+#define mail_strategy(level,application,module,error_str,error_no) \
+	(XLOG_G(mail_strategy_enable) ? mail_strategy_file(level, application, module, error_str, error_no TSRMLS_CC) : SUCCESS)
 
 int build_mail_commands(zval **result, char *username, char *password, char *from, char *fromName, char *to, char *subject, char *body TSRMLS_DC);
 int mail_send(char *smtp, int port, zval *commands, int ssl TSRMLS_DC);

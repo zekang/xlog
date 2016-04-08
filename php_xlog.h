@@ -96,6 +96,13 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	zend_bool mail_backtrace_args;
 	int   mail_retry_interval;
 	time_t mail_fail_time;
+	/**mail_strategy*/
+	zend_bool mail_strategy_enable;
+	char *mail_strategy_log_path;
+	int  mail_strategy_min;
+	int  mail_strategy_max;
+	int  mail_strategy_avg;
+
 
 	/**redis*/
 	zend_bool   redis_enable;
@@ -132,6 +139,7 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	char  *module;
 	char  *path;
 	int	  index;
+	int   error_count;
 ZEND_END_MODULE_GLOBALS(xlog)
 
 #ifdef ZTS

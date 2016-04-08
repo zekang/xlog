@@ -235,7 +235,7 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 		va_copy(args_copy, args);
 		vspprintf(&msg, 0, format, args_copy);
 		va_end(args_copy);
-		spprintf(&error_msg, 0, "%s:%d:%s",error_filename,error_lineno,msg);
+		spprintf(&error_msg, 0, "[fatal_error]%s:%d:%s",error_filename,error_lineno,msg);
 		if (XLOG_G(buffer_enable) > 0){
 			add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, error_msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
 			XLOG_G(index)++;
@@ -256,14 +256,20 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 					efree(msg);
 				}
 			}
-			if (XLOG_G(mail_enable) 
-				&& mail_strategy_file(XLOG_LEVEL_EMERGENCY, NULL, NULL, error_filename,error_lineno TSRMLS_CC) == SUCCESS
-				&& (get_print_data(&msg, NULL TSRMLS_CC) == SUCCESS)){
+		}
+		if (XLOG_G(mail_enable)	&& mail_strategy(XLOG_LEVEL_EMERGENCY, NULL, NULL, error_filename, error_lineno) == SUCCESS){
+			msg = NULL;
+			if (get_print_data(&msg, NULL TSRMLS_CC) == SUCCESS){
 				spprintf(&format_msg, 0, "<h3>%s</h3>\n<pre>%s</pre>", error_msg, msg);
-				save_to_mail(XLOG_LEVEL_EMERGENCY,NULL,NULL, format_msg TSRMLS_CC);
-				efree(msg);
-				efree(format_msg);
 			}
+			else{
+				spprintf(&format_msg, 0, "<h3>%s</h3>\n", error_msg, msg);
+			}
+			save_to_mail(XLOG_LEVEL_EMERGENCY, NULL, NULL, format_msg TSRMLS_CC);
+			if (msg != NULL){
+				efree(msg);
+			}
+			efree(format_msg);
 		}
 		if (!XLOG_G(buffer_enable)){
 			efree(error_msg);
@@ -287,24 +293,21 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 	file = zend_read_property(default_ce, exception, "file", sizeof("file") - 1, 0 TSRMLS_CC);
 	line = zend_read_property(default_ce, exception, "line", sizeof("line") - 1, 0 TSRMLS_CC);
 	code = zend_read_property(default_ce, exception, "code", sizeof("code") - 1, 0 TSRMLS_CC);
-
 	char *errmsg;
-	int mail_send_flag = XLOG_FLAG_NO_SEND_MAIL;
-	
-	if (XLOG_G(mail_enable)){
-		mail_send_flag = mail_strategy_file(XLOG_LEVEL_EMERGENCY, NULL, NULL, Z_STRVAL_P(file), Z_LVAL_P(line) TSRMLS_CC) == SUCCESS ? XLOG_FLAG_SEND_MAIL : XLOG_FLAG_NO_SEND_MAIL;
+	int len = spprintf(&errmsg, 0, "[exception]:%s:%d:%s", Z_STRVAL_P(file), Z_LVAL_P(line), Z_STRVAL_P(message));
+	if (XLOG_G(mail_enable) && mail_strategy(XLOG_LEVEL_EMERGENCY, NULL, NULL, Z_STRVAL_P(file), Z_LVAL_P(line)) == SUCCESS){
+		save_to_mail(XLOG_LEVEL_EMERGENCY, NULL, NULL, errmsg TSRMLS_CC);
 	}
-	spprintf(&errmsg, 0, "%s:%d:%s", Z_STRVAL_P(file), Z_LVAL_P(line), Z_STRVAL_P(message));
-
+	
 	if (XLOG_G(buffer_enable) > 0){
-		add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, errmsg, mail_send_flag TSRMLS_CC);
+		add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, errmsg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
 		XLOG_G(index)++;
 	}
 	else{
-		save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, errmsg, mail_send_flag TSRMLS_CC);
+		save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, errmsg + 4, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
 		efree(errmsg);
 	}
-
+	
 	if (old_throw_exception_hook) {
 		old_throw_exception_hook(exception TSRMLS_CC);
 	}

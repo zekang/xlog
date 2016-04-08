@@ -25,6 +25,16 @@ xlog.mail_level = 8
 
 xlog.mail_backtrace_args = 0
 
+xlog.mail_strategy_enable = 1
+
+xlog.mail_strategy_log_path = d:\tmp\mail
+
+xlog.mail_strategy_min = 10
+
+xlog.mail_strategy_max = 50
+
+xlog.mail_strategy_avg = 10
+
 xlog.trace_error = 1
 
 xlog.trace_exception = 1
@@ -54,6 +64,8 @@ xlog.host = localhost
 xlog.redis_retry_interval = 60
 
 xlog.mail_retry_interval = 60
+
+xlog.level = 0
 
 xlog.rotate_enable =1
 

@@ -334,7 +334,7 @@ void save_log_no_buffer(int level, char* module, char *content ,short flag TSRML
 	if (XLOG_G(mail_enable) 
 		&& flag == XLOG_FLAG_SEND_MAIL 
 		&& (level >= XLOG_G(mail_level))
-		&& mail_strategy_file(level, application, module, content, 0 TSRMLS_CC) == SUCCESS
+		&& mail_strategy(level, application, module, content, 0) == SUCCESS
 		){
 		save_to_mail(level, application, module, msg TSRMLS_CC);
 	}
@@ -367,7 +367,7 @@ void save_log_with_buffer(LogItem **log TSRMLS_DC)
 		if (XLOG_G(mail_enable) 
 			&& log[i]->flag == XLOG_FLAG_SEND_MAIL 
 			&& (log[i]->level >= XLOG_G(mail_level))
-			&& mail_strategy_file(log[i]->level, log[i]->application, log[i]->module, log[i]->content, 0 TSRMLS_CC) == SUCCESS
+			&& mail_strategy(log[i]->level, log[i]->application, log[i]->module, log[i]->content, 0) == SUCCESS
 			){
 			save_to_mail(log[i]->level, log[i]->application, log[i]->module, msg TSRMLS_CC);
 		}

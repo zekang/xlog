@@ -24,7 +24,7 @@
 #include "ext/standard/base64.h"
 #include "ext/standard/flock_compat.h"
 #include "common.h"
-
+#include "ext/standard/php_var.h"
 /**{{{
 int build_mail_commands(zval **ret,char *username,char *password,char *from,char *fromName,char *to ,char *subject,char *body TSRMLS_DC)
 */
@@ -113,7 +113,7 @@ int build_mail_commands(
 		smart_str_appends(&head, buffer);
 	}
 	
-	php_sprintf(buffer, "Subject: %s\r\n", subject);
+	php_sprintf(buffer, "Subject: %s-%d\r\n", subject, XLOG_G(error_count));
 	smart_str_appends(&head, buffer);
 	smart_str_appends(&head, "Content-Type: multipart/alternative;\r\n");
 
@@ -227,7 +227,7 @@ END:
 }
 /**}}}*/
 
-static void update_mail_stategy_file(char *file,int total_count,int pos,ErrorLine *line TSRMLS_DC)
+static void update_mail_strategy_file(char *file, int total_count, int pos, ErrorLine *line TSRMLS_DC)
 {
 	php_stream *stream = php_stream_open_wrapper(file, "rb+", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
 	if (!stream){
@@ -251,13 +251,31 @@ static void update_mail_stategy_file(char *file,int total_count,int pos,ErrorLin
 */
 int mail_strategy_file(int level, const char *application, const char *module, const char *error_str, int error_no TSRMLS_DC)
 {
-	const char *tmpdir = php_get_temporary_directory();
-	tmpdir = XLOG_G(path) == NULL ? XLOG_G(default_path) : XLOG_G(path);
-	char buf[256] = { 0 };
-	int len = -1, day = 0, count = 1,total_count=1, log_day = 0, error_len = min(strlen(error_str), ERROR_MSG_MAX_LEN);
-	int i = 0,pos=0;
+	char *tmpdir;
+	char buf[512] = { 0 };
+	int len = -1, 
+		day = 0, 
+		count = 1,
+		total_count=1, 
+		error_count = 1,
+		log_day = 0, 
+		error_len = min(strlen(error_str), ERROR_MSG_MAX_LEN),
+		i = 0,
+		pos=0,
+		flag = FAILURE;
 	zend_bool found = 0;
 	ErrorLine line = { 0 };
+
+	if (XLOG_G(mail_strategy_log_path)[0] == '\0'){
+		tmpdir = (char *)php_get_temporary_directory();
+	}
+	else {
+		tmpdir = XLOG_G(mail_strategy_log_path);
+		if (xlog_make_log_dir(tmpdir TSRMLS_CC) == FAILURE){
+			return flag;
+		}
+	}
+
 	uint hash_value = zend_hash_func(error_str, error_len);
 	time_t now = time(NULL);
 	strftime(buf, sizeof(buf), "%Y%m%d", localtime(&now));
@@ -268,7 +286,7 @@ int mail_strategy_file(int level, const char *application, const char *module, c
 	//check file exists
 	zend_bool exists = VCWD_ACCESS(buf, 0) == 0 ? 1 : 0;
 	php_stream *stream = php_stream_open_wrapper(buf, exists ? "rb+" : "wb", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
-	int flag = FAILURE;
+	
 	if (!stream){
 		return flag;
 	}
@@ -287,9 +305,7 @@ int mail_strategy_file(int level, const char *application, const char *module, c
 					buf[line.len] = '\0';
 					if (strncmp(error_str, buf, line.len) == 0){
 						found = 1;
-						if (line.count % 10 == 0){
-							flag = SUCCESS;
-						}
+						error_count = line.count + 1;
 						goto END;
 					}
 				}
@@ -306,7 +322,6 @@ int mail_strategy_file(int level, const char *application, const char *module, c
 			php_stream_free(stream, PHP_STREAM_FREE_RELEASE_STREAM);
 			stream = php_stream_open_wrapper(buf, "wb", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
 			if (!stream){
-				flag = SUCCESS;
 				goto END;
 			}
 			count = 1;
@@ -326,12 +341,19 @@ int mail_strategy_file(int level, const char *application, const char *module, c
 	line.error_no = error_no;
 	php_stream_write(stream, (char *)&line, ERROR_LINE_SIZE);
 	php_stream_write(stream, error_str, error_len);
-	flag = SUCCESS;
 END:
 	if (stream){
 		php_stream_close(stream);
 		php_stream_free(stream, PHP_STREAM_FREE_RELEASE_STREAM);
 	}
+
+	if (error_count >= XLOG_G(mail_strategy_min) && error_count <=  XLOG_G(mail_strategy_max)){
+		if (error_count == XLOG_G(mail_strategy_min) || error_count == XLOG_G(mail_strategy_max) || (error_count % XLOG_G(mail_strategy_avg) == 0)){
+			flag = SUCCESS;
+			XLOG_G(error_count) = error_count;
+		}
+	}
+
 	if (total_count > 1){
 		php_sprintf(buf, "%s%cxlog_%s_%s_%s_%d.data", tmpdir, XLOG_DIRECTORY_SEPARATOR, XLOG_G(host), application, module, level);
 		if (found){
@@ -339,7 +361,7 @@ END:
 			line.count++;
 			total_count--;
 		}
-		update_mail_stategy_file(buf, total_count, (found ? pos : 0), (found ? &line : NULL) TSRMLS_CC);
+		update_mail_strategy_file(buf, total_count, (found ? pos : 0), (found ? &line : NULL) TSRMLS_CC);
 	}
 	return flag;
 }

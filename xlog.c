@@ -414,24 +414,30 @@ ZEND_GET_MODULE(xlog)
 /* {{{ PHP_INI
 */
 PHP_INI_BEGIN()
-STD_PHP_INI_ENTRY("xlog.mail_smtp",XLOG_INI_DEFALUT_EMPTY, PHP_INI_ALL, OnUpdateString, mail_smtp, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.mail_port", "25", PHP_INI_ALL, OnUpdateLongGEZero, mail_port, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.mail_username", "", PHP_INI_ALL, OnUpdateString, mail_username, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.mail_password", "", PHP_INI_ALL, OnUpdateString, mail_password, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.mail_ssl", "0", PHP_INI_ALL, OnUpdateBool, mail_ssl, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.mail_from", "",PHP_INI_ALL,OnUpdateString,mail_from,zend_xlog_globals,xlog_globals)
-STD_PHP_INI_ENTRY("xlog.mail_from_name", "", PHP_INI_ALL, OnUpdateString, mail_from_name, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.mail_to", "", PHP_INI_ALL, OnUpdateString, mail_to, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_smtp", XLOG_INI_DEFALUT_EMPTY, PHP_INI_SYSTEM, OnUpdateString, mail_smtp, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_port", "25", PHP_INI_SYSTEM, OnUpdateLongGEZero, mail_port, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_username", "", PHP_INI_SYSTEM, OnUpdateString, mail_username, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_password", "", PHP_INI_SYSTEM, OnUpdateString, mail_password, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_ssl", "0", PHP_INI_SYSTEM, OnUpdateBool, mail_ssl, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_from", "", PHP_INI_SYSTEM, OnUpdateString, mail_from, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_from_name", "", PHP_INI_SYSTEM, OnUpdateString, mail_from_name, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_to", "", PHP_INI_SYSTEM, OnUpdateString, mail_to, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_enable", "0", PHP_INI_ALL, OnUpdateBool, mail_enable, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_level", "8", PHP_INI_ALL, OnUpdateLongGEZero, mail_level, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.mail_backtrace_args", "0", PHP_INI_ALL, OnUpdateBool, mail_backtrace_args, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_backtrace_args", "0", PHP_INI_SYSTEM, OnUpdateBool, mail_backtrace_args, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_retry_interval", "600", PHP_INI_SYSTEM, OnUpdateLongGEZero, mail_retry_interval, zend_xlog_globals, xlog_globals)
 
+STD_PHP_INI_ENTRY("xlog.mail_strategy_enable", "1", PHP_INI_ALL, OnUpdateBool, mail_strategy_enable, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_strategy_log_path", XLOG_INI_DEFALUT_EMPTY, PHP_INI_SYSTEM, OnUpdateString, mail_strategy_log_path, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_strategy_min", "5", PHP_INI_ALL, OnUpdateLongGEZero, mail_strategy_min, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_strategy_max", "100", PHP_INI_ALL, OnUpdateLongGEZero, mail_strategy_max, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.mail_strategy_avg", "10", PHP_INI_ALL, OnUpdateLongGEZero, mail_strategy_avg, zend_xlog_globals, xlog_globals)
+
 STD_PHP_INI_ENTRY("xlog.redis_enable", "0", PHP_INI_ALL, OnUpdateBool, redis_enable, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.redis_host", XLOG_INI_DEFALUT_EMPTY, PHP_INI_ALL, OnUpdateString, redis_host, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.redis_port", "6379", PHP_INI_ALL, OnUpdateLongGEZero, redis_port, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.redis_auth", "", PHP_INI_ALL, OnUpdateString, redis_auth, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.redis_db", "0", PHP_INI_ALL, OnUpdateLongGEZero, redis_db, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.redis_host", XLOG_INI_DEFALUT_EMPTY, PHP_INI_SYSTEM, OnUpdateString, redis_host, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.redis_port", "6379", PHP_INI_SYSTEM, OnUpdateLongGEZero, redis_port, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.redis_auth", "", PHP_INI_SYSTEM, OnUpdateString, redis_auth, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.redis_db", "0", PHP_INI_SYSTEM, OnUpdateLongGEZero, redis_db, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.redis_retry_interval", "600", PHP_INI_SYSTEM, OnUpdateLongGEZero, redis_retry_interval, zend_xlog_globals, xlog_globals)
 
 STD_PHP_INI_ENTRY("xlog.file_enable", "1", PHP_INI_ALL, OnUpdateBool, file_enable, zend_xlog_globals, xlog_globals)
@@ -492,6 +498,7 @@ PHP_GINIT_FUNCTION(xlog)
 	xlog_globals->module = NULL;
 	xlog_globals->path = NULL;
 	xlog_globals->file_handle = NULL;
+	xlog_globals->error_count = 0;
 }
 /* }}} */
 
@@ -539,6 +546,7 @@ PHP_RINIT_FUNCTION(xlog)
 	XLOG_G(module) = NULL;
 	XLOG_G(path) = NULL;
 	XLOG_G(index) = 0;
+	XLOG_G(error_count) = 0;
 	if (XLOG_G(buffer_enable)){
 		if (XLOG_G(buffer) < 1){
 			XLOG_G(buffer) = 100;
@@ -560,6 +568,8 @@ PHP_RINIT_FUNCTION(xlog)
 	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(host), 60, XLOG_FILE_PATTERN);
 	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(redis_host), 50, XLOG_FILE_PATTERN);
 	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(mail_smtp), 512, XLOG_FILE_PATTERN);
+	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(mail_strategy_log_path), 128, XLOG_PATH_PATTERN);
+	
 	return SUCCESS;
 }
 /* }}} */
