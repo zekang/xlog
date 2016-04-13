@@ -25,8 +25,7 @@
 #include "php_xlog.h"
 #include "common.h"
 #include "mail.h"
-/**{{{
-int build_mail_commands(zval **ret,char *username,char *password,char *from,char *fromName,char *to ,char *subject,char *body TSRMLS_DC)
+/**{{{ int build_mail_commands(zval **ret,char *username,char *password,char *from,char *fromName,char *to ,char *subject,char *body TSRMLS_DC)
 */
 int build_mail_commands(
 	zval **ret, 
@@ -227,6 +226,8 @@ END:
 }
 /**}}}*/
 
+/**{{{ static void update_mail_strategy_file(char *file, int total_count, int pos, ErrorLine *line TSRMLS_DC)
+*/
 static void update_mail_strategy_file(char *file, int total_count, int pos, ErrorLine *line TSRMLS_DC)
 {
 	php_stream *stream = php_stream_open_wrapper(file, "rb+", IGNORE_URL_WIN | ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
@@ -246,6 +247,7 @@ static void update_mail_strategy_file(char *file, int total_count, int pos, Erro
 	php_stream_close(stream);
 	php_stream_free(stream, PHP_STREAM_FREE_RELEASE_STREAM);
 }
+/**}}}*/
 
 /*{{{ int mail_strategy_file(int level, const char *application, const char *module, const char *error_str, int error_no TSRMLS_DC)
 */

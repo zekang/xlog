@@ -375,7 +375,7 @@ int strtr_array(const char *template,int template_len,zval *context,char **ret,i
 			break;
 		}
 		key_len = end - first - 1;
-		if (key_len > 255 || key_len < 1){
+		if (key_len >= XLOG_CONTEXT_KEY_MAX_LEN || key_len < 1){
 			break;
 		}
 		memcpy(key, first + 1, key_len);
@@ -425,7 +425,6 @@ int  xlog_make_log_dir(char *dir TSRMLS_DC)
 	php_stream_context *context;
 	umask(1);
 	context = php_stream_context_from_zval(zcontext, 0);
-	
 	if (!php_stream_mkdir(dir, mode, (recursive ? PHP_STREAM_MKDIR_RECURSIVE : 0) | REPORT_ERRORS, context)) {
 		return FAILURE;
 	}

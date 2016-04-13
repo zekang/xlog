@@ -488,16 +488,16 @@ void file_handle_cache_ptr_dtor_wapper(FileHandleCache **pCache)
 }
 /**}}}*/
 
-/**{{{ zend_bool rotate_file(const char *filename,int len,int max TSRMLS_DC);
+/**{{{ zend_bool rotate_file(const char *filename,int filename_len,int max TSRMLS_DC);
 */
-zend_bool rotate_file(const char *filename, int len,int max TSRMLS_DC)
+zend_bool rotate_file(const char *filename, int filename_len, int max TSRMLS_DC)
 {
 	int i;
 	char source[256];
 	char dest[256];
 	char *oldname;
 	
-	if (filename == NULL || len > 240 || len < 1 || max < 1) {
+	if (filename == NULL || filename_len > 240 || filename_len < 1 || max < 1) {
 		return FAILURE;
 	}
 	for (i = max; i>=0; i--){
