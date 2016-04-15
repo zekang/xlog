@@ -133,6 +133,7 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	char  *default_application;
 	char  *default_module;
 	zend_bool   trace_error;
+	zend_bool   trace_stack;
 	zend_bool   trace_exception;
 	int   level;
 	zend_bool   buffer_enable;
@@ -147,6 +148,7 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	char  *path;
 	int	  index;
 	int   error_count;
+	int   redis_counter;
 ZEND_END_MODULE_GLOBALS(xlog)
 
 #ifdef ZTS

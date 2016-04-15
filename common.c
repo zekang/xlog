@@ -29,6 +29,17 @@
 #include "log.h"
 #include "mail.h"
 
+#ifdef PHP_WIN32
+#include "win32/time.h"
+#elif defined(NETWARE)
+#include <sys/timeval.h>
+#include <sys/time.h>
+#else
+#include <sys/time.h>
+#endif
+
+#define MICRO_IN_SEC 1000000.00
+
 /**{{{ int split_string(const char *str, unsigned char split, char ***ret, int *count)
 */
 int split_string(const char *str, unsigned char split, char ***ret, int *count)
@@ -229,7 +240,7 @@ int get_var_export_data(char **ret, int *ret_len TSRMLS_DC)
 void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
 {
 	if (type == E_ERROR || type == E_PARSE || type == E_CORE_ERROR || type == E_COMPILE_ERROR || type == E_USER_ERROR || type == E_RECOVERABLE_ERROR) {
-		char *msg,*error_msg,*format_msg;
+		char *msg,*error_msg,*format_msg,*serialize_msg,*stack_msg;
 		TSRMLS_FETCH();
 		va_list args_copy;
 		va_copy(args_copy, args);
@@ -243,19 +254,24 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 		else{
 			save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, error_msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
 		}
-		efree(msg);
-		if (type == E_ERROR){
-			if (get_serialize_debug_trace(&msg, NULL TSRMLS_CC) == SUCCESS){
+		
+		if (XLOG_G(trace_stack) >0 && (type == E_ERROR || type == E_PARSE)){
+			if (get_serialize_debug_trace(&serialize_msg, NULL TSRMLS_CC) == SUCCESS){
+				spprintf(&stack_msg, 0, "{error}=>%s:%d:%s\t{serialize}=>%s", error_filename, error_lineno,msg, serialize_msg);
+				efree(serialize_msg);
 				if (XLOG_G(buffer_enable) > 0){
-					if (add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC) == SUCCESS){
+					if (add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_WITH_STACKINFO, NULL, 0, stack_msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC) == SUCCESS){
 						XLOG_G(index)++;
 					}
 				}
 				else{
-					save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
-					efree(msg);
+					save_log_no_buffer(XLOG_LEVEL_WITH_STACKINFO, NULL, stack_msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
+					efree(stack_msg);
 				}
 			}
+		}
+		if (msg != NULL){
+			efree(msg);
 		}
 		if (XLOG_G(mail_enable)	&& mail_strategy(XLOG_LEVEL_EMERGENCY, NULL, NULL, error_filename, error_lineno) == SUCCESS){
 			msg = NULL;
@@ -304,7 +320,7 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 		XLOG_G(index)++;
 	}
 	else{
-		save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, errmsg + 4, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
+		save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, errmsg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
 		efree(errmsg);
 	}
 	
@@ -428,6 +444,19 @@ int  xlog_make_log_dir(char *dir TSRMLS_DC)
 	if (!php_stream_mkdir(dir, mode, (recursive ? PHP_STREAM_MKDIR_RECURSIVE : 0) | REPORT_ERRORS, context)) {
 		return FAILURE;
 	}
+	return SUCCESS;
+}
+/**}}}*/
+
+/** {{{ int  xlog_get_microtime(char *ret,int max,int extra)
+*/
+int  xlog_get_microtime(char *ret,int max,int extra)
+{
+	struct timeval tp = { 0 };
+	if (ret == NULL || max < 1 || gettimeofday(&tp, NULL)){
+		return FAILURE;
+	}
+	snprintf(ret, max, "%f%d", (double)tp.tv_sec + tp.tv_usec / MICRO_IN_SEC,extra);
 	return SUCCESS;
 }
 /**}}}*/

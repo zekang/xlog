@@ -35,6 +35,7 @@
 #define XLOG_CRITICAL                    "critical"
 #define XLOG_ALERT                       "alert"
 #define XLOG_EMERGENCY                   "emergency"
+#define XLOG_WITH_STACKINFO			     "stack_info"		
 
 #define XLOG_LEVEL_ALL					 0
 #define XLOG_LEVEL_DEBUG				 1
@@ -45,10 +46,14 @@
 #define XLOG_LEVEL_CRITICAL				 6
 #define XLOG_LEVEL_ALERT				 7
 #define XLOG_LEVEL_EMERGENCY			 8
+#define XLOG_LEVEL_WITH_STACKINFO        9
 
 #define XLOG_FLAG_NO_SEND_MAIL           0
 #define XLOG_FLAG_SEND_MAIL				 1
 
+#define XLOG_LEVEL_MIN  0
+#define XLOG_LEVEL_USER_MAX  8
+#define XLOG_LEVEL_MAX  9
 
 #define CHECK_AND_SET_VALUE_IF_NULL(var,var_len,first,default)  \
 if(var == NULL){ \
@@ -83,6 +88,7 @@ int			check_if_need_reset(LogItem **log, int *index TSRMLS_DC);
 int			log_free_item(LogItem **log);
 int			destory_log(LogItem ***log, int size TSRMLS_DC);
 int			save_to_redis(int level,char*application, char *module, char *content TSRMLS_DC);
+int			save_to_redis_with_model(int level, char*application, char *module, char *content TSRMLS_DC);
 void		save_to_mail(int level, char*application, char *module, char *content TSRMLS_DC);
 void		save_to_file(int level, char*application, char *module, char *content, int content_len TSRMLS_DC);
 void		save_log_no_buffer(int level, char* module, char *content, short flag TSRMLS_DC);

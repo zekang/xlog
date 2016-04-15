@@ -42,7 +42,7 @@ int init_log(LogItem ***log, int size TSRMLS_DC)
 */
 int add_log(LogItem **log, int index, short level, char *module, int module_len, char *content, int content_len, short flag TSRMLS_DC)
 {
-	if (log == NULL || index < 0 || content == NULL || content_len < 1){
+	if (level < XLOG_LEVEL_MIN || level > XLOG_LEVEL_MAX || log == NULL || index < 0 || content == NULL || content_len < 1){
 		return FAILURE;
 	}
 	check_if_need_reset(log, &index TSRMLS_CC);
@@ -88,7 +88,7 @@ END:
 */
 int  add_log_no_malloc_msg(LogItem **log, int index, short level, char *module, int module_len, char *content, short flag TSRMLS_DC)
 {
-	if (log == NULL || index < 0 || content == NULL){
+	if (log == NULL || index < 0 || content == NULL || level < XLOG_LEVEL_MIN || level > XLOG_LEVEL_MAX){
 		return FAILURE;
 	}
 	check_if_need_reset(log, &index TSRMLS_CC);
@@ -249,9 +249,100 @@ int save_to_redis(int level, char *application,char *module, char *content TSRML
 	int len = -1;
 	CHECK_AND_SET_VALUE_IF_NULL(module, len, module, default_module);
 	CHECK_AND_SET_VALUE_IF_NULL(application, len, application, default_application);
-	php_sprintf(key, "%s_%s_%s_%s_%s", XLOG_G(host), application,module, day, get_log_level_name(level));
+	len = php_sprintf(key, "%s_%s_%s_%s_%s", XLOG_G(host), application,module, day, get_log_level_name(level));
 		
-	command_len = build_redis_command(&command, "LPUSH", 5, "ss", key, strlen(key), content, strlen(content));
+	command_len = build_redis_command(&command, "LPUSH", 5, "ss", key, len, content, strlen(content));
+	execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
+	return SUCCESS;
+}
+/**}}}*/
+
+
+
+/**{{{ save_to_redis_with_model(int level,  char *application, char *module, char *content TSRMLS_DC)
+*/
+int save_to_redis_with_model(int level, char *application, char *module, char *content TSRMLS_DC)
+{
+	php_stream *stream;
+	int command_len = 0;
+	char *command = NULL;
+	char buf_microtime[64] = { 0 };
+	stream = XLOG_G(redis);
+	if (xlog_get_microtime(buf_microtime, sizeof(buf_microtime)-1,XLOG_G(redis_counter))==FAILURE){
+		return FAILURE;
+	}
+	XLOG_G(redis_counter) += 1;
+	if (stream == NULL){
+		time_t now = time(NULL);
+		if (XLOG_G(redis_fail_time) > 0
+			&& (now - XLOG_G(redis_fail_time) < XLOG_G(redis_retry_interval))
+			){
+			return FAILURE;
+		}
+		struct timeval tv = { 1, 0 };
+		char host[64];
+		char *errorstr = NULL;
+		int errorno;
+		php_sprintf(host, "%s:%d", XLOG_G(redis_host), XLOG_G(redis_port));
+		stream = php_stream_xport_create(
+			host,
+			strlen(host),
+			ENFORCE_SAFE_MODE,
+			STREAM_XPORT_CLIENT | STREAM_XPORT_CONNECT,
+			0,
+			&tv,
+			NULL,
+			&errorstr,
+			&errorno
+			);
+		XLOG_G(redis) = stream;
+		if (stream != NULL){
+			int auth_len = strlen(XLOG_G(redis_auth));
+			if (auth_len > 0){
+				zval *result = NULL;
+				command_len = build_redis_command(&command, "AUTH", 4, "s", XLOG_G(redis_auth), auth_len);
+				execute_redis_command(stream, &result, command, command_len TSRMLS_CC);
+				if (result && !zend_is_true(result)){
+					php_error_docref(NULL TSRMLS_CC, E_WARNING, "the redis auth password is invalid");
+					zval_dtor(result);
+					efree(result);
+					return FAILURE;
+				}
+			}
+			command_len = build_redis_command(&command, "SELECT", 6, "d", XLOG_G(redis_db));
+			execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
+			XLOG_G(redis_fail_time) = 0;
+		}
+
+		else{
+			XLOG_G(redis_fail_time) = now;
+			if (errorstr){
+				efree(errorstr);
+			}
+		}
+	}
+	if (stream == NULL){
+		return FAILURE;
+	}
+	char key[256] = { 0 };
+	int len = -1, buf_microtime_len = strlen(buf_microtime);
+	
+	CHECK_AND_SET_VALUE_IF_NULL(module, len, module, default_module);
+	CHECK_AND_SET_VALUE_IF_NULL(application, len, application, default_application);
+	len = php_sprintf(key, "xlog_%s_%s_%s", XLOG_G(host), application, module);
+	command_len = build_redis_command(&command, "RPUSH", 5, "ss", key, len, buf_microtime, buf_microtime_len);
+	execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
+	len = php_sprintf(key, "xlog_%s_%s_%s:a:%s", XLOG_G(host), application, module, buf_microtime);
+	command_len = build_redis_command(&command, "HMSET", 5, 
+		"ssssdss", 
+		key, len, 
+		"time",4,
+		buf_microtime, buf_microtime_len,
+		"level",5,
+		level,
+		"content",7,
+		content, strlen(content)
+		);
 	execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
 	return SUCCESS;
 }
@@ -261,7 +352,7 @@ int save_to_redis(int level, char *application,char *module, char *content TSRML
 */
 void save_to_mail(int level, char *application,char *module, char *content TSRMLS_DC)
 {
-	if (level <0 || level>8 || content == NULL){
+	if (content == NULL){
 		return;
 	}
 	zval *commands;
@@ -297,7 +388,7 @@ void save_to_mail(int level, char *application,char *module, char *content TSRML
 */
 void save_to_file(int level, char*application,char *module, char *content,int content_len TSRMLS_DC)
 {
-	if (level < 0 || level >8 || content == NULL){
+	if (content == NULL){
 		return;
 	}
 	int len = -1;
@@ -316,7 +407,7 @@ void save_to_file(int level, char*application,char *module, char *content,int co
 */
 void save_log_no_buffer(int level, char* module, char *content ,short flag TSRMLS_DC)
 {
-	if (level < XLOG_LEVEL_ALL || level >XLOG_LEVEL_EMERGENCY || content == NULL){
+	if (level < XLOG_LEVEL_MIN || level > XLOG_LEVEL_MAX || content == NULL){
 		return;
 	}
 	char buf[32] = { 0 };
@@ -329,7 +420,7 @@ void save_log_no_buffer(int level, char* module, char *content ,short flag TSRML
 	strftime(buf, 32, "%Y-%m-%d %H:%M:%S", localtime(&now));
 	len = spprintf(&msg, 0, "%s | %s | %s | %s | %s\n", get_log_level_name(level), buf,application, module, content);
 	if (XLOG_G(redis_enable)){
-		save_to_redis(level, application, module, msg TSRMLS_CC);
+		save_to_redis_with_model(level, application, module, content TSRMLS_CC);
 	}
 	if (XLOG_G(mail_enable) 
 		&& flag == XLOG_FLAG_SEND_MAIL 
@@ -361,7 +452,7 @@ void save_log_with_buffer(LogItem **log TSRMLS_DC)
 		len = spprintf(&msg, 0, "%s | %s | %s | %s | %s\n", get_log_level_name(log[i]->level), buf, log[i]->application,log[i]->module, log[i]->content);
 
 		if (XLOG_G(redis_enable)){
-			save_to_redis(log[i]->level, log[i]->application, log[i]->module, msg TSRMLS_CC);
+			save_to_redis_with_model(log[i]->level, log[i]->application, log[i]->module, log[i]->content TSRMLS_CC);
 		}
 
 		if (XLOG_G(mail_enable) 
@@ -396,6 +487,7 @@ char* get_log_level_name(int level)
 	case XLOG_LEVEL_CRITICAL:	name = XLOG_CRITICAL; break;
 	case XLOG_LEVEL_ALERT	:	name = XLOG_ALERT; break;
 	case XLOG_LEVEL_EMERGENCY:	name = XLOG_EMERGENCY; break;
+	case XLOG_LEVEL_WITH_STACKINFO:	name = XLOG_WITH_STACKINFO; break;
 	default					:	break;
 	}
 	return name;

@@ -179,7 +179,7 @@ static void process_log(INTERNAL_FUNCTION_PARAMETERS,int level)
 	zval *context = NULL;
 	int argc = ZEND_NUM_ARGS();
 	char real_module[64] = { 0 };
-	if (level < XLOG_G(level)){
+	if (level < XLOG_G(level) || level < XLOG_LEVEL_MIN  || level > XLOG_LEVEL_USER_MAX){
 		return;
 	}
 	if (zend_parse_parameters(argc TSRMLS_CC, "s|as", &msg, &msg_len, &context,&module,&module_len) == FAILURE){
@@ -447,6 +447,7 @@ STD_PHP_INI_ENTRY("xlog.default_module", XLOG_INI_DEFAULT_MODULE, PHP_INI_SYSTEM
 STD_PHP_INI_ENTRY("xlog.default_application", XLOG_INI_DEFAULT_APPLICATION, PHP_INI_SYSTEM, OnUpdateString, default_application, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.default_path", XLOG_INI_DEFAULT_PATH, PHP_INI_SYSTEM, OnUpdateString, default_path, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.trace_error", "0", PHP_INI_ALL, OnUpdateBool, trace_error, zend_xlog_globals, xlog_globals)
+STD_PHP_INI_ENTRY("xlog.trace_stack", "0", PHP_INI_ALL, OnUpdateBool, trace_stack, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.trace_exception", "0", PHP_INI_ALL, OnUpdateBool, trace_exception, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.level", "0", PHP_INI_ALL, OnUpdateLong, level, zend_xlog_globals, xlog_globals)
 
@@ -541,6 +542,7 @@ PHP_RINIT_FUNCTION(xlog)
 	XLOG_G(path) = NULL;
 	XLOG_G(index) = 0;
 	XLOG_G(error_count) = 0;
+	XLOG_G(redis_counter) = 0;
 	if (XLOG_G(buffer_enable)){
 		if (XLOG_G(buffer) < 1){
 			XLOG_G(buffer) = 100;

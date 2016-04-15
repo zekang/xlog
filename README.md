@@ -37,6 +37,8 @@ xlog.mail_strategy_avg = 10
 
 xlog.trace_error = 1
 
+xlog.trace_stack = 0
+
 xlog.trace_exception = 1
 
 xlog.file_enable = 0

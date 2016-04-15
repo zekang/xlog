@@ -44,4 +44,5 @@ int  get_print_data(char **ret, int *ret_len TSRMLS_DC);
 int  get_var_export_data(char **ret, int *ret_len TSRMLS_DC);
 int  strtr_array(const char *template, int template_len, zval *context, char **ret, int *ret_len TSRMLS_DC);
 int  xlog_make_log_dir(char *dir TSRMLS_DC);
+int  xlog_get_microtime(char *ret, int max, int extra);
 #endif

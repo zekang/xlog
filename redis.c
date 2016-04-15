@@ -155,9 +155,9 @@ int build_redis_command(char **ret,char *keywokd,int keyword_len,char *format,..
 			case 'i':
 			case 'd': {
 						  int i = va_arg(ap, int);
-						  char tmp[32];
+						  char tmp[32] = { 0 };
 						  int tmp_len = snprintf(tmp, sizeof(tmp), "%d", i);
-						  smart_str_append_long(&command, i);
+						  smart_str_append_long(&command, tmp_len);
 						  smart_str_appendl(&command, REDIS_END_LINE, REDIS_END_LINE_LENGTH);
 						  smart_str_appendl(&command, tmp, tmp_len);
 			}
