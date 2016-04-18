@@ -23,8 +23,6 @@ xlog.mail_enable = 0
 
 xlog.mail_level = 8
 
-xlog.mail_backtrace_args = 0
-
 xlog.mail_strategy_enable = 1
 
 xlog.mail_strategy_log_path = d:\tmp\mail

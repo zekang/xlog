@@ -24,6 +24,8 @@
 #define XLOG_CONTEXT_KEY_LEFT_DEILM		  '{'
 #define XLOG_CONTEXT_KEY_RIGHT_DEILM	  '}'
 
+#define XLOG_EXCEPTION_TRACE_SERIALIZE	   1
+#define XLOG_EXCEPTION_TRACE_PRINT		   2
 #ifdef WINDOWS
 #define access _access
 #define umask _umask
@@ -40,6 +42,7 @@ void restore_error_hooks(TSRMLS_D);
 
 int  get_debug_backtrace(zval *debug TSRMLS_DC);
 int  get_serialize_debug_trace(char **ret, int *ret_len TSRMLS_DC);
+int  get_exception_trace(zval *exception, char **ret, int *ret_len ,int mode TSRMLS_DC);
 int  get_print_data(char **ret, int *ret_len TSRMLS_DC);
 int  get_var_export_data(char **ret, int *ret_len TSRMLS_DC);
 int  strtr_array(const char *template, int template_len, zval *context, char **ret, int *ret_len TSRMLS_DC);

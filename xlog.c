@@ -418,7 +418,6 @@ STD_PHP_INI_ENTRY("xlog.mail_from_name", "", PHP_INI_SYSTEM, OnUpdateString, mai
 STD_PHP_INI_ENTRY("xlog.mail_to", "", PHP_INI_SYSTEM, OnUpdateString, mail_to, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_enable", "0", PHP_INI_ALL, OnUpdateBool, mail_enable, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_level", "8", PHP_INI_ALL, OnUpdateLongGEZero, mail_level, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.mail_backtrace_args", "0", PHP_INI_SYSTEM, OnUpdateBool, mail_backtrace_args, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_retry_interval", "600", PHP_INI_SYSTEM, OnUpdateLongGEZero, mail_retry_interval, zend_xlog_globals, xlog_globals)
 
 STD_PHP_INI_ENTRY("xlog.mail_strategy_enable", "1", PHP_INI_ALL, OnUpdateBool, mail_strategy_enable, zend_xlog_globals, xlog_globals)

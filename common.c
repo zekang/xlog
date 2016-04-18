@@ -130,9 +130,9 @@ int get_debug_backtrace(zval *debug TSRMLS_DC)
 		return FAILURE;
 	}
 #if ZEND_MODULE_API_NO >= 20100525
-	zend_fetch_debug_backtrace(debug, 1, XLOG_G(mail_backtrace_args) ? DEBUG_BACKTRACE_PROVIDE_OBJECT : DEBUG_BACKTRACE_IGNORE_ARGS, 0 TSRMLS_CC);
+	zend_fetch_debug_backtrace(debug, 1, DEBUG_BACKTRACE_IGNORE_ARGS, 0 TSRMLS_CC);
 #else
-	zend_fetch_debug_backtrace(debug, 1, XLOG_G(mail_backtrace_args) ? DEBUG_BACKTRACE_PROVIDE_OBJECT : DEBUG_BACKTRACE_IGNORE_ARGS TSRMLS_CC);
+	zend_fetch_debug_backtrace(debug, 1, DEBUG_BACKTRACE_IGNORE_ARGS TSRMLS_CC);
 #endif
 	if (zend_hash_num_elements(Z_ARRVAL_P(debug)) > 0){
 		return SUCCESS;
@@ -151,15 +151,19 @@ int  get_serialize_debug_trace(char **ret,int *ret_len TSRMLS_DC)
 	}
 	zend_bool flag = FAILURE;
 	zval debug;
+	
 	size_t i;
 	php_serialize_data_t var_hash;
+	
 	smart_str buf = { 0 };
 	if (get_debug_backtrace(&debug TSRMLS_CC) ==SUCCESS){
 		flag = SUCCESS;
-		PHP_VAR_SERIALIZE_INIT(var_hash);
 		zval *tmp = &debug;
+		
+		PHP_VAR_SERIALIZE_INIT(var_hash);
 		php_var_serialize(&buf, &tmp, &var_hash TSRMLS_CC);
 		PHP_VAR_SERIALIZE_DESTROY(var_hash);
+		
 		zval_dtor(&debug);
 		if (EG(exception)) {
 			smart_str_free(&buf);
@@ -184,6 +188,80 @@ END:
 	return flag;
 }
 /**}}}*/
+
+/**{{{ int  get_exception_trace(zval *exception ,char **ret,int *ret_len int mode TSRMLS_DC)
+*/
+int  get_exception_trace(zval *exception, char **ret, int *ret_len ,int mode TSRMLS_DC)
+{
+	if (ret == NULL || !exception){
+		return FAILURE;
+	}
+	zend_bool flag = FAILURE;
+	
+	smart_str buf = { 0 };
+	zval *trace=NULL;
+	trace = zend_read_property(zend_exception_get_default(TSRMLS_C), exception, "trace", sizeof("trace") - 1, 0 TSRMLS_CC);
+	if (trace && Z_TYPE_P(trace)==IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(trace))>0){
+		flag = SUCCESS;
+		zval *old_exception = EG(exception);
+		EG(exception) = NULL;
+		zval tmp = *trace;
+		zval_copy_ctor(&tmp);
+		zval **pptmp;
+		for (
+			zend_hash_internal_pointer_reset(Z_ARRVAL(tmp));
+			zend_hash_has_more_elements(Z_ARRVAL(tmp)) == SUCCESS;
+		zend_hash_move_forward(Z_ARRVAL(tmp))
+			){
+			if (zend_hash_get_current_data(Z_ARRVAL(tmp), (void **)&pptmp) == SUCCESS){
+				if (Z_TYPE_PP(pptmp) == IS_ARRAY){
+					zend_hash_del(Z_ARRVAL_PP(pptmp), "args", sizeof("args"));
+				}
+			}
+		}
+		if (mode == XLOG_EXCEPTION_TRACE_SERIALIZE){
+			php_serialize_data_t var_hash;
+			PHP_VAR_SERIALIZE_INIT(var_hash);
+			zval *ptmp = &tmp;
+			php_var_serialize(&buf, &ptmp, &var_hash TSRMLS_CC);
+			PHP_VAR_SERIALIZE_DESTROY(var_hash);
+		}
+		else if (mode == XLOG_EXCEPTION_TRACE_PRINT){
+			php_output_start_default(TSRMLS_C);
+			zend_print_zval_r(trace, 0 TSRMLS_CC);
+			zval tmpreturl = { 0 };
+			php_output_get_contents(&tmpreturl TSRMLS_CC);
+			buf.c = Z_STRVAL_P(&tmpreturl);
+			buf.len = Z_STRLEN(tmpreturl);
+			php_output_discard(TSRMLS_C);
+		}
+		zval_dtor(&tmp);
+		EG(exception) = old_exception;
+		if (buf.len == 0 || EG(exception) != exception) {
+			smart_str_free(&buf);
+			flag = FAILURE;
+			goto END;
+		}
+	}
+END:
+	if (flag == SUCCESS){
+		*ret = buf.c;
+		if (ret_len != NULL){
+			*ret_len = buf.len;
+		}
+		if (mode == XLOG_EXCEPTION_TRACE_SERIALIZE && (strlen(buf.c) != buf.len)){
+			size_t i;
+			for (i = 0; i < buf.len; i++){
+				if (buf.c[i] == '\0'){
+					buf.c[i] = '*';
+				}
+			}
+		}
+	}
+	return flag;
+}
+/**}}}*/
+
 
 /**{{{ int get_print_data(char **ret, int *ret_len TSRMLS_DC)
 */
@@ -301,6 +379,7 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 {
 	zval *message, *file, *line, *code;
 	zend_class_entry *default_ce;
+	char *serialize_msg, *stack_msg, *format_msg,*msg;
 	if (!exception) {
 		return;
 	}
@@ -312,7 +391,18 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 	char *errmsg;
 	int len = spprintf(&errmsg, 0, "[exception]:%s:%d:%s", Z_STRVAL_P(file), Z_LVAL_P(line), Z_STRVAL_P(message));
 	if (XLOG_G(mail_enable) && mail_strategy(XLOG_LEVEL_EMERGENCY, NULL, NULL, Z_STRVAL_P(file), Z_LVAL_P(line)) == SUCCESS){
-		save_to_mail(XLOG_LEVEL_EMERGENCY, NULL, NULL, errmsg TSRMLS_CC);
+		msg = NULL;
+		if (get_exception_trace(exception, &msg, NULL, XLOG_EXCEPTION_TRACE_PRINT TSRMLS_CC) == SUCCESS){
+			spprintf(&format_msg, 0, "<h3>%s</h3>\n<pre>%s</pre>", errmsg, msg);
+		}
+		else{
+			spprintf(&format_msg, 0, "<h3>%s</h3>\n", errmsg);
+		}
+		save_to_mail(XLOG_LEVEL_EMERGENCY, NULL, NULL, format_msg TSRMLS_CC);
+		if (msg != NULL){
+			efree(msg);
+		}
+		efree(format_msg);
 	}
 	
 	if (XLOG_G(buffer_enable) > 0){
@@ -324,6 +414,19 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 		efree(errmsg);
 	}
 	
+	if (get_exception_trace(exception,&serialize_msg, NULL ,XLOG_EXCEPTION_TRACE_SERIALIZE TSRMLS_CC) == SUCCESS){
+		spprintf(&stack_msg, 0, "{error}=>%s:%d:%s\t{serialize}=>%s", Z_STRVAL_P(file), Z_LVAL_P(line), Z_STRVAL_P(message), serialize_msg);
+		efree(serialize_msg);
+		if (XLOG_G(buffer_enable) > 0){
+			if (add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_WITH_STACKINFO, NULL, 0, stack_msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC) == SUCCESS){
+				XLOG_G(index)++;
+			}
+		}
+		else{
+			save_log_no_buffer(XLOG_LEVEL_WITH_STACKINFO, NULL, stack_msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
+			efree(stack_msg);
+		}
+	}
 	if (old_throw_exception_hook) {
 		old_throw_exception_hook(exception TSRMLS_CC);
 	}

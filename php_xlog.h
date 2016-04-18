@@ -100,7 +100,6 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	char *mail_from;
 	char *mail_from_name;
 	char *mail_to;
-	zend_bool mail_backtrace_args;
 	int   mail_retry_interval;
 	time_t mail_fail_time;
 	/**mail_strategy*/
