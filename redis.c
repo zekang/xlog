@@ -19,7 +19,7 @@
 #include "redis.h"
 #include "ext/standard/php_smart_str.h"
 
-/**{{{ zval * parse_redis_response(php_stream *stream TSRMLS_DC)
+/* {{{ zval * parse_redis_response(php_stream *stream TSRMLS_DC)
 */
 zval * parse_redis_response(php_stream *stream TSRMLS_DC)
 {
@@ -72,9 +72,9 @@ zval * parse_redis_response(php_stream *stream TSRMLS_DC)
 	}
 	return retval;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ int parse_redis_response_discard_result(php_stream *stream TSRMLS_DC)
+/* {{{ int parse_redis_response_discard_result(php_stream *stream TSRMLS_DC)
 */
 int  parse_redis_response_discard_result(php_stream *stream TSRMLS_DC)
 {
@@ -118,10 +118,10 @@ int  parse_redis_response_discard_result(php_stream *stream TSRMLS_DC)
 	}
 	return flag;
 }
-/**}}}*/
+/* }}}*/
 
 
-/**{{{ int build_redis_command(char **ret,char *keywokd,int keyword_len,char *format,...)
+/* {{{ int build_redis_command(char **ret,char *keywokd,int keyword_len,char *format,...)
 */
 int build_redis_command(char **ret,char *keywokd,int keyword_len,char *format,...)
 {
@@ -181,10 +181,10 @@ int build_redis_command(char **ret,char *keywokd,int keyword_len,char *format,..
 	*ret = command.c;
 	return command.len;
 }
-/**}}}*/
+/* }}}*/
 
 
-/**{{{ int execute_redis_command(php_stream *stream, zval **ret, char *command, int command_len TSRMLS_DC)
+/* {{{ int execute_redis_command(php_stream *stream, zval **ret, char *command, int command_len TSRMLS_DC)
 */
 int execute_redis_command(php_stream *stream, zval **ret, char *command, int command_len TSRMLS_DC)
 {
@@ -204,4 +204,4 @@ int execute_redis_command(php_stream *stream, zval **ret, char *command, int com
 	efree(command);
 	return SUCCESS;
 }
-/**}}}*/
+/* }}}*/

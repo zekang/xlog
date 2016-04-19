@@ -23,7 +23,7 @@
 #include "mail.h"
 #include "common.h"
 
-/**{{{ int init_log(LogItem ***log, int size TSRMLS_DC)
+/* {{{ int init_log(LogItem ***log, int size TSRMLS_DC)
 */
 int init_log(LogItem ***log, int size TSRMLS_DC)
 {
@@ -36,9 +36,9 @@ int init_log(LogItem ***log, int size TSRMLS_DC)
 	}
 	return SUCCESS;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ int add_log(LogItem **log, int index,short level, char *module, int module_len, char *content, int content_len ,short flag TSRMLS_DC)
+/* {{{ int add_log(LogItem **log, int index,short level, char *module, int module_len, char *content, int content_len ,short flag TSRMLS_DC)
 */
 int add_log(LogItem **log, int index, short level, char *module, int module_len, char *content, int content_len, short flag TSRMLS_DC)
 {
@@ -82,9 +82,9 @@ END:
 	}
 	return ret_flag;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ int  add_log_no_malloc_msg(LogItem **log, int index, short level, char *module, int module_len, char *content,short flag TSRMLS_DC)
+/* {{{ int  add_log_no_malloc_msg(LogItem **log, int index, short level, char *module, int module_len, char *content,short flag TSRMLS_DC)
 */
 int  add_log_no_malloc_msg(LogItem **log, int index, short level, char *module, int module_len, char *content, short flag TSRMLS_DC)
 {
@@ -124,9 +124,9 @@ END:
 	}
 	return ret_flag;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ int	check_if_need_reset(LogItem **log,int *index TSRMLS_DC)
+/* {{{ int	check_if_need_reset(LogItem **log,int *index TSRMLS_DC)
 */
 int	check_if_need_reset(LogItem **log,int *index TSRMLS_DC)
 {
@@ -138,9 +138,9 @@ int	check_if_need_reset(LogItem **log,int *index TSRMLS_DC)
 	XLOG_G(index) = 0;
 	return SUCCESS;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ int log_free_item(LogItem **log)
+/* {{{ int log_free_item(LogItem **log)
 */
 int log_free_item(LogItem **log)
 {
@@ -161,10 +161,10 @@ int log_free_item(LogItem **log)
 	*log = NULL;
 	return SUCCESS;
 }
-/**}}}*/
+/* }}}*/
 
 
-/**{{{ int destory_log(LogItem ***log, int size TSRMLS_DC)
+/* {{{ int destory_log(LogItem ***log, int size TSRMLS_DC)
 */
 int destory_log(LogItem ***log, int size TSRMLS_DC)
 {
@@ -180,9 +180,9 @@ int destory_log(LogItem ***log, int size TSRMLS_DC)
 	*log = NULL;
 	return SUCCESS;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ save_to_redis(int level,  char *application, char *module, char *content TSRMLS_DC)
+/* {{{ save_to_redis(int level,  char *application, char *module, char *content TSRMLS_DC)
 */
 int save_to_redis(int level, char *application,char *module, char *content TSRMLS_DC)
 {
@@ -255,11 +255,11 @@ int save_to_redis(int level, char *application,char *module, char *content TSRML
 	execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
 	return SUCCESS;
 }
-/**}}}*/
+/* }}}*/
 
 
 
-/**{{{ save_to_redis_with_model(int level,  char *application, char *module, char *content TSRMLS_DC)
+/* {{{ save_to_redis_with_model(int level,  char *application, char *module, char *content TSRMLS_DC)
 */
 int save_to_redis_with_model(int level, char *application, char *module, char *content TSRMLS_DC)
 {
@@ -346,9 +346,9 @@ int save_to_redis_with_model(int level, char *application, char *module, char *c
 	execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
 	return SUCCESS;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ void save_to_mail(int level,  char *application, char *module, char *content TSRMLS_DC)
+/* {{{ void save_to_mail(int level,  char *application, char *module, char *content TSRMLS_DC)
 */
 void save_to_mail(int level, char *application,char *module, char *content TSRMLS_DC)
 {
@@ -382,9 +382,9 @@ void save_to_mail(int level, char *application,char *module, char *content TSRML
 	}
 
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ void save_to_file(int level, char*application, char *module, char *content,int content_len TSRMLS_DC)
+/* {{{ void save_to_file(int level, char*application, char *module, char *content,int content_len TSRMLS_DC)
 */
 void save_to_file(int level, char*application,char *module, char *content,int content_len TSRMLS_DC)
 {
@@ -400,10 +400,10 @@ void save_to_file(int level, char*application,char *module, char *content,int co
 	}
 
 }
-/**}}}*/
+/* }}}*/
 
 
-/**{{{ void save_log_no_buffer(int level,char* module, char *content,short flag  TSRMLS_DC)
+/* {{{ void save_log_no_buffer(int level,char* module, char *content,short flag  TSRMLS_DC)
 */
 void save_log_no_buffer(int level, char* module, char *content ,short flag TSRMLS_DC)
 {
@@ -436,9 +436,9 @@ void save_log_no_buffer(int level, char* module, char *content ,short flag TSRML
 		efree(msg);
 	}
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ void save_log_with_buffer(LogItem **log TSRMLS_DC)
+/* {{{ void save_log_with_buffer(LogItem **log TSRMLS_DC)
 */
 void save_log_with_buffer(LogItem **log TSRMLS_DC)
 {
@@ -470,9 +470,9 @@ void save_log_with_buffer(LogItem **log TSRMLS_DC)
 		log_free_item(&log[i]);
 	}
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ char* get_log_level_name(int level)
+/* {{{ char* get_log_level_name(int level)
 */
 char* get_log_level_name(int level)
 {
@@ -492,9 +492,9 @@ char* get_log_level_name(int level)
 	}
 	return name;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ php_stream *get_file_handle_from_cache(int level, char *application,char *module TSRMLS_DC)
+/* {{{ php_stream *get_file_handle_from_cache(int level, char *application,char *module TSRMLS_DC)
 */
 php_stream *get_file_handle_from_cache(int level,char *application,char *module TSRMLS_DC)
 {
@@ -558,9 +558,9 @@ php_stream *get_file_handle_from_cache(int level,char *application,char *module 
 	}
 	return NULL;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ void file_handle_cache_ptr_dtor_wapper(FileHandleCache **pCache)
+/* {{{ void file_handle_cache_ptr_dtor_wapper(FileHandleCache **pCache)
 */
 void file_handle_cache_ptr_dtor_wapper(FileHandleCache **pCache)
 {
@@ -578,9 +578,9 @@ void file_handle_cache_ptr_dtor_wapper(FileHandleCache **pCache)
 	}
 	efree(cache);
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ zend_bool rotate_file(const char *filename,int filename_len,int max TSRMLS_DC);
+/* {{{ zend_bool rotate_file(const char *filename,int filename_len,int max TSRMLS_DC);
 */
 zend_bool rotate_file(const char *filename, int filename_len, int max TSRMLS_DC)
 {
@@ -615,4 +615,4 @@ zend_bool rotate_file(const char *filename, int filename_len, int max TSRMLS_DC)
 	}
 	return  SUCCESS;
 }
-/**}}}*/
+/* }}}*/

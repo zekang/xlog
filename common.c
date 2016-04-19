@@ -40,7 +40,7 @@
 
 #define MICRO_IN_SEC 1000000.00
 
-/**{{{ int split_string(const char *str, unsigned char split, char ***ret, int *count)
+/* {{{ int split_string(const char *str, unsigned char split, char ***ret, int *count)
 */
 int split_string(const char *str, unsigned char split, char ***ret, int *count)
 {
@@ -101,10 +101,10 @@ END:
 	}
 	return flag;
 }
-/**}}}*/
+/* }}}*/
 
 
-/**{{{ void split_string_free(char ***buf, int count)
+/* {{{ void split_string_free(char ***buf, int count)
 */
 void split_string_free(char ***buf, int count)
 {
@@ -120,9 +120,9 @@ void split_string_free(char ***buf, int count)
 	efree(tmp);
 	*buf = NULL;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ int get_debug_backtrace(zval *debug,TSRMLS_D)
+/* {{{ int get_debug_backtrace(zval *debug,TSRMLS_D)
 */
 int get_debug_backtrace(zval *debug TSRMLS_DC)
 {
@@ -140,9 +140,9 @@ int get_debug_backtrace(zval *debug TSRMLS_DC)
 	zval_dtor(debug);
 	return FAILURE;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ int  get_serialize_debug_trace(char **ret,int *ret_len TSRMLS_DC)
+/* {{{ int  get_serialize_debug_trace(char **ret,int *ret_len TSRMLS_DC)
 */
 int  get_serialize_debug_trace(char **ret,int *ret_len TSRMLS_DC)
 {
@@ -187,9 +187,9 @@ END:
 	}
 	return flag;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ int  get_exception_trace(zval *exception ,char **ret,int *ret_len int mode TSRMLS_DC)
+/* {{{ int  get_exception_trace(zval *exception ,char **ret,int *ret_len int mode TSRMLS_DC)
 */
 int  get_exception_trace(zval *exception, char **ret, int *ret_len ,int mode TSRMLS_DC)
 {
@@ -260,10 +260,10 @@ END:
 	}
 	return flag;
 }
-/**}}}*/
+/* }}}*/
 
 
-/**{{{ int get_print_data(char **ret, int *ret_len TSRMLS_DC)
+/* {{{ int get_print_data(char **ret, int *ret_len TSRMLS_DC)
 */
 int get_print_data(char **ret, int *ret_len TSRMLS_DC)
 {
@@ -287,9 +287,9 @@ int get_print_data(char **ret, int *ret_len TSRMLS_DC)
 	}
 	return flag;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ int get_var_export_data(char **ret, int *ret_len TSRMLS_DC)
+/* {{{ int get_var_export_data(char **ret, int *ret_len TSRMLS_DC)
 */
 int get_var_export_data(char **ret, int *ret_len TSRMLS_DC)
 {
@@ -311,9 +311,9 @@ int get_var_export_data(char **ret, int *ret_len TSRMLS_DC)
 	}
 	return flag;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
+/* {{{ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
 */
 void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
 {
@@ -371,9 +371,9 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 	}
 	old_error_cb(type, error_filename, error_lineno, format, args);
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
+/* {{{ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 */
 void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 {
@@ -431,9 +431,9 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 		old_throw_exception_hook(exception TSRMLS_CC);
 	}
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ void init_error_hooks(TSRMLS_D)
+/* {{{ void init_error_hooks(TSRMLS_D)
 */
 void init_error_hooks(TSRMLS_D)
 {
@@ -449,9 +449,9 @@ void init_error_hooks(TSRMLS_D)
 		zend_throw_exception_hook = xlog_throw_exception_hook;
 	}
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ void restore_error_hooks(TSRMLS_D)
+/* {{{ void restore_error_hooks(TSRMLS_D)
 */
 void restore_error_hooks(TSRMLS_D)
 {
@@ -466,10 +466,10 @@ void restore_error_hooks(TSRMLS_D)
 		}
 	}
 }
-/**}}}*/
+/* }}}*/
 
 
-/**{{{ int strtr_array(const char *template,int template_len,zval *context,char **ret,int *ret_len TSRMLS_DC)
+/* {{{ int strtr_array(const char *template,int template_len,zval *context,char **ret,int *ret_len TSRMLS_DC)
 */
 int strtr_array(const char *template,int template_len,zval *context,char **ret,int *ret_len TSRMLS_DC)
 {
@@ -528,9 +528,9 @@ int strtr_array(const char *template,int template_len,zval *context,char **ret,i
 	}
 	return SUCCESS;
 }
-/**}}}*/
+/* }}}*/
 
-/**{{{ int  xlog_make_log_dir(char *dir TSRMLS_DC)
+/* {{{ int  xlog_make_log_dir(char *dir TSRMLS_DC)
 */
 int  xlog_make_log_dir(char *dir TSRMLS_DC)
 {
@@ -549,9 +549,9 @@ int  xlog_make_log_dir(char *dir TSRMLS_DC)
 	}
 	return SUCCESS;
 }
-/**}}}*/
+/* }}}*/
 
-/** {{{ int  xlog_get_microtime(char *ret,int max,int extra)
+/*  {{{ int  xlog_get_microtime(char *ret,int max,int extra)
 */
 int  xlog_get_microtime(char *ret,int max,int extra)
 {
@@ -562,4 +562,4 @@ int  xlog_get_microtime(char *ret,int max,int extra)
 	snprintf(ret, max, "%f%d", (double)tp.tv_sec + tp.tv_usec / MICRO_IN_SEC,extra);
 	return SUCCESS;
 }
-/**}}}*/
+/* }}}*/
