@@ -333,7 +333,7 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 			save_log_no_buffer(XLOG_LEVEL_EMERGENCY, NULL, error_msg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
 		}
 		
-		if (XLOG_G(trace_stack) >0 && (type == E_ERROR || type == E_PARSE)){
+		if (XLOG_G(trace_stack) && (type == E_ERROR || type == E_PARSE)){
 			if (get_serialize_debug_trace(&serialize_msg, NULL TSRMLS_CC) == SUCCESS){
 				spprintf(&stack_msg, 0, "{error}=>%s:%d:%s\t{serialize}=>%s", error_filename, error_lineno,msg, serialize_msg);
 				efree(serialize_msg);
@@ -414,7 +414,7 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 		efree(errmsg);
 	}
 	
-	if (get_exception_trace(exception,&serialize_msg, NULL ,XLOG_EXCEPTION_TRACE_SERIALIZE TSRMLS_CC) == SUCCESS){
+	if (XLOG_G(trace_stack) && get_exception_trace(exception, &serialize_msg, NULL, XLOG_EXCEPTION_TRACE_SERIALIZE TSRMLS_CC) == SUCCESS){
 		spprintf(&stack_msg, 0, "{error}=>%s:%d:%s\t{serialize}=>%s", Z_STRVAL_P(file), Z_LVAL_P(line), Z_STRVAL_P(message), serialize_msg);
 		efree(serialize_msg);
 		if (XLOG_G(buffer_enable) > 0){
