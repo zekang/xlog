@@ -188,8 +188,10 @@ static void process_log(INTERNAL_FUNCTION_PARAMETERS,int level)
 	if (zend_parse_parameters(argc TSRMLS_CC, "s|as", &msg, &msg_len, &context,&module,&module_len) == FAILURE){
 		RETURN_FALSE;
 	}
-	memcpy(real_module, module, min(60,module_len));
-	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(real_module, 60, XLOG_FILE_PATTERN);
+	if (module_len > 0){
+		memcpy(real_module, module, min(60,module_len));
+		XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(real_module, 60, XLOG_FILE_PATTERN);
+	}
 	if (argc >= 2 && context != NULL && Z_TYPE_P(context) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(context))>0){
 		process_log_with_context(level, msg, msg_len, context, real_module, module_len TSRMLS_CC);
 	}
