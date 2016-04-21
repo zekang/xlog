@@ -574,7 +574,6 @@ void file_handle_cache_ptr_dtor_wapper(FileHandleCache **pCache)
 	}
 	if (cache->stream != NULL){
 		php_stream_close(cache->stream);
-		php_stream_free(cache->stream, PHP_STREAM_FREE_RELEASE_STREAM);
 	}
 	efree(cache);
 }
