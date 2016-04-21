@@ -588,7 +588,6 @@ PHP_RSHUTDOWN_FUNCTION(xlog)
 	}
 	if (XLOG_G(redis) != NULL){
 		php_stream_close(XLOG_G(redis));
-		php_stream_free(XLOG_G(redis), PHP_STREAM_FREE_RELEASE_STREAM);
 	}
 	if (XLOG_G(application) != NULL){
 		efree(XLOG_G(application));
