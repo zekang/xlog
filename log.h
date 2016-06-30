@@ -36,6 +36,8 @@
 #define XLOG_ALERT                       "alert"
 #define XLOG_EMERGENCY                   "emergency"
 #define XLOG_WITH_STACKINFO			     "stack_info"		
+#define XLOG_ELAPSE_TIME			 "elapse_time"	
+
 
 #define XLOG_LEVEL_ALL					 0
 #define XLOG_LEVEL_DEBUG				 1
@@ -47,13 +49,14 @@
 #define XLOG_LEVEL_ALERT				 7
 #define XLOG_LEVEL_EMERGENCY			 8
 #define XLOG_LEVEL_WITH_STACKINFO        9
+#define XLOG_LEVEL_ELAPSE_TIME			 10
 
 #define XLOG_FLAG_NO_SEND_MAIL           0
 #define XLOG_FLAG_SEND_MAIL				 1
 
 #define XLOG_LEVEL_MIN  0
 #define XLOG_LEVEL_USER_MAX  8
-#define XLOG_LEVEL_MAX  9
+#define XLOG_LEVEL_MAX  10
 
 #define CHECK_AND_SET_VALUE_IF_NULL(var,var_len,first,default)  \
 if(var == NULL){ \

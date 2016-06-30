@@ -18,6 +18,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "php.h"
 #include "zend.h"
+#include "main/SAPI.h"
 #include "zend_builtin_functions.h"
 #include "zend_exceptions.h"
 #include "standard/file.h"
@@ -563,3 +564,107 @@ int  xlog_get_microtime(char *ret,int max,int extra)
 	return SUCCESS;
 }
 /* }}}*/
+
+/** {{{ zval * xlog_request_query(uint type, char * name, uint len TSRMLS_DC)
+*/
+zval * xlog_request_query(uint type, char * name, uint len TSRMLS_DC)
+{
+	zval 		**carrier = NULL, **ret;
+
+#if (PHP_MAJOR_VERSION == 5) && (PHP_MINOR_VERSION < 4)
+	zend_bool 	jit_initialization = (PG(auto_globals_jit) && !PG(register_globals) && !PG(register_long_arrays));
+#else
+	zend_bool 	jit_initialization = PG(auto_globals_jit);
+#endif
+
+	switch (type) {
+	case TRACK_VARS_POST:
+	case TRACK_VARS_GET:
+	case TRACK_VARS_FILES:
+	case TRACK_VARS_COOKIE:
+		carrier = &PG(http_globals)[type];
+		break;
+	case TRACK_VARS_ENV:
+		if (jit_initialization) {
+			zend_is_auto_global(ZEND_STRL("_ENV") TSRMLS_CC);
+		}
+		carrier = &PG(http_globals)[type];
+		break;
+	case TRACK_VARS_SERVER:
+		if (jit_initialization) {
+			zend_is_auto_global(ZEND_STRL("_SERVER") TSRMLS_CC);
+		}
+		carrier = &PG(http_globals)[type];
+		break;
+	case TRACK_VARS_REQUEST:
+		if (jit_initialization) {
+			zend_is_auto_global(ZEND_STRL("_REQUEST") TSRMLS_CC);
+		}
+		(void)zend_hash_find(&EG(symbol_table), ZEND_STRS("_REQUEST"), (void **)&carrier);
+		break;
+	default:
+		break;
+	}
+
+	if (!carrier || !(*carrier)) {
+		zval *empty;
+		MAKE_STD_ZVAL(empty);
+		ZVAL_NULL(empty);
+		return empty;
+	}
+
+	if (!len) {
+		Z_ADDREF_P(*carrier);
+		return *carrier;
+	}
+
+	if (zend_hash_find(Z_ARRVAL_PP(carrier), name, len + 1, (void **)&ret) == FAILURE) {
+		zval *empty;
+		MAKE_STD_ZVAL(empty);
+		ZVAL_NULL(empty);
+		return empty;
+	}
+
+	Z_ADDREF_P(*ret);
+	return *ret;
+}
+/* }}} */
+
+/** {{{ int  xlog_elapse_time(TSRMLS_D)
+*/
+int  xlog_elapse_time(TSRMLS_D)
+{
+	char *buf;
+	char timebuf[32] = { 0 };
+	int buf_len = 0, elapse = 0;
+	php_stream *stream = NULL;
+	zval *uri = NULL;
+	do{
+		if (strncmp("cli", sapi_module.name, 3) == 0){
+			break;
+		}
+		if (XLOG_G(profiling_time) < 0){
+			break;
+		}
+		elapse = time(NULL) - XLOG_G(request_time);
+		if (elapse < XLOG_G(profiling_time)){
+			break;
+		}
+		uri = xlog_request_query(TRACK_VARS_SERVER, ZEND_STRL("REQUEST_URI") TSRMLS_CC);
+		if(uri == NULL || Z_TYPE_P(uri) != IS_STRING){
+			break;
+		}
+		stream = get_file_handle_from_cache(XLOG_LEVEL_ELAPSE_TIME, XLOG_G(default_application), XLOG_G(default_module) TSRMLS_CC);
+		if (stream == NULL){
+			break;
+		}
+		strftime(timebuf, 32, "%Y-%m-%d %H:%M:%S", localtime(&XLOG_G(request_time)));
+		buf_len = spprintf(&buf, 0, "%s\t[uri]:%s\t[elapse]:%d\n", timebuf,Z_STRVAL_P(uri), elapse);
+		php_stream_write(stream, buf, buf_len);
+		efree(buf);
+	} while (0);
+	if (uri != NULL){
+		zval_ptr_dtor(&uri);
+	}
+	return 0;
+}

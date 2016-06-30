@@ -488,6 +488,7 @@ char* get_log_level_name(int level)
 	case XLOG_LEVEL_ALERT	:	name = XLOG_ALERT; break;
 	case XLOG_LEVEL_EMERGENCY:	name = XLOG_EMERGENCY; break;
 	case XLOG_LEVEL_WITH_STACKINFO:	name = XLOG_WITH_STACKINFO; break;
+	case XLOG_LEVEL_ELAPSE_TIME:	name = XLOG_ELAPSE_TIME; break;
 	default					:	break;
 	}
 	return name;

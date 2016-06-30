@@ -37,7 +37,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>D:\Program Files\phpStudy\php54n\ext\</OutDir>
+    <OutDir>D:\phpStudy\php55n\ext\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>true</LinkIncremental>
@@ -45,18 +45,18 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;XLOG_EXPORTS;ZEND_DEBUG=0;PHP_EXTENSION;PHP_WIN32;ZEND_WIN32;HAVE_XLOG=1;COMPILE_DL_XLOG;ZTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;XLOG_EXPORTS;ZEND_DEBUG=0;PHP_EXTENSION;PHP_WIN32;ZEND_WIN32;HAVE_XLOG=1;COMPILE_DL_XLOG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>F:\php5.4\php-5.4.35-src;F:\php5.4\php-5.4.35-src\main;F:\php5.4\php-5.4.35-src\TSRM;F:\php5.4\php-5.4.35-src\Zend;F:\php5.4\php-5.4.35-src\ext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\php_src\php5.5\php-5.5.35-src;D:\php_src\php5.5\php-5.5.35-src\main;D:\php_src\php5.5\php-5.5.35-src\TSRM;D:\php_src\php5.5\php-5.5.35-src\Zend;D:\php_src\php5.5\php-5.5.35-src\ext;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>F:\php5.4\php-5.4.35-Win32-VC9-x86\dev\php5ts.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>D:\php_src\php5.5\php-5.5.35-nts-Win32-VC11-x86\dev\php5.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

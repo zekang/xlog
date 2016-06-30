@@ -454,7 +454,7 @@ STD_PHP_INI_ENTRY("xlog.trace_error", "0", PHP_INI_ALL, OnUpdateBool, trace_erro
 STD_PHP_INI_ENTRY("xlog.trace_stack", "0", PHP_INI_ALL, OnUpdateBool, trace_stack, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.trace_exception", "0", PHP_INI_ALL, OnUpdateBool, trace_exception, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.level", "0", PHP_INI_ALL, OnUpdateLong, level, zend_xlog_globals, xlog_globals)
-
+STD_PHP_INI_ENTRY("xlog.profiling_time", "-1", PHP_INI_SYSTEM, OnUpdateLong, profiling_time, zend_xlog_globals, xlog_globals)
 
 PHP_INI_END()
 
@@ -502,6 +502,7 @@ PHP_GINIT_FUNCTION(xlog)
 	xlog_globals->path = NULL;
 	xlog_globals->file_handle = NULL;
 	xlog_globals->error_count = 0;
+	xlog_globals->profiling_time = -1;
 }
 /* }}} */
 
@@ -551,6 +552,7 @@ PHP_RINIT_FUNCTION(xlog)
 	XLOG_G(index) = 0;
 	XLOG_G(error_count) = 0;
 	XLOG_G(redis_counter) = 0;
+	XLOG_G(request_time) = time(NULL);
 	if (XLOG_G(buffer_enable)){
 		if (XLOG_G(buffer) < 1){
 			XLOG_G(buffer) = 100;
@@ -602,6 +604,7 @@ PHP_RSHUTDOWN_FUNCTION(xlog)
 		zend_hash_destroy(XLOG_G(file_handle));
 		FREE_HASHTABLE(XLOG_G(file_handle));
 	}
+	xlog_elapse_time(TSRMLS_C);
 	return SUCCESS;
 }
 /* }}} */

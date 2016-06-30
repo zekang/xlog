@@ -137,7 +137,7 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	int   level;
 	zend_bool   buffer_enable;
 	int	   buffer;
-
+	int profiling_time ;
 
 	php_stream	 *redis;
 	LogItem **log;
@@ -148,6 +148,7 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	int	  index;
 	int   error_count;
 	int   redis_counter;
+	time_t request_time;
 ZEND_END_MODULE_GLOBALS(xlog)
 
 #ifdef ZTS
