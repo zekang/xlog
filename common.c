@@ -659,7 +659,7 @@ int  xlog_elapse_time(TSRMLS_D)
 			break;
 		}
 		strftime(timebuf, 32, "%Y-%m-%d %H:%M:%S", localtime(&XLOG_G(request_time)));
-		buf_len = spprintf(&buf, 0, "%s\t%d\t%s\n", timebuf, elapse, Z_STRVAL_P(uri));
+		buf_len = spprintf(&buf, 8192, "%s\t%d\t%s\n", timebuf, elapse, Z_STRVAL_P(uri));
 		php_stream_write(stream, buf, buf_len);
 		efree(buf);
 	} while (0);
