@@ -600,11 +600,11 @@ PHP_RSHUTDOWN_FUNCTION(xlog)
 	if (XLOG_G(path) != NULL){
 		efree(XLOG_G(path));
 	}
+	xlog_elapse_time(TSRMLS_C);
 	if (XLOG_G(file_handle) != NULL){
 		zend_hash_destroy(XLOG_G(file_handle));
 		FREE_HASHTABLE(XLOG_G(file_handle));
 	}
-	xlog_elapse_time(TSRMLS_C);
 	return SUCCESS;
 }
 /* }}} */
