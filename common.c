@@ -668,3 +668,4 @@ int  xlog_elapse_time(TSRMLS_D)
 	}
 	return 0;
 }
+/* }}} */
