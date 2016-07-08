@@ -142,6 +142,7 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	php_stream	 *redis;
 	LogItem **log;
 	HashTable *file_handle;
+	HashTable *func_traces;
 	char  *application;
 	char  *module;
 	char  *path;
