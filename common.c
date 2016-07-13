@@ -318,8 +318,12 @@ int get_var_export_data(char **ret, int *ret_len TSRMLS_DC)
 */
 void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
 {
+	char *msg, *error_msg, *serialize_msg, *stack_msg;
+#ifdef MAIL_ENABLE
+	char *format_msg;
+#endif
 	if (type == E_ERROR || type == E_PARSE || type == E_CORE_ERROR || type == E_COMPILE_ERROR || type == E_USER_ERROR || type == E_RECOVERABLE_ERROR) {
-		char *msg,*error_msg,*format_msg,*serialize_msg,*stack_msg;
+		
 		TSRMLS_FETCH();
 		va_list args_copy;
 		va_copy(args_copy, args);
@@ -352,6 +356,7 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 		if (msg != NULL){
 			efree(msg);
 		}
+#ifdef MAIL_ENABLE
 		if (XLOG_G(mail_enable)	&& mail_strategy(XLOG_LEVEL_EMERGENCY, NULL, NULL, error_filename, error_lineno) == SUCCESS){
 			msg = NULL;
 			if (get_print_data(&msg, NULL TSRMLS_CC) == SUCCESS){
@@ -366,6 +371,7 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 			}
 			efree(format_msg);
 		}
+#endif
 		if (!XLOG_G(buffer_enable)){
 			efree(error_msg);
 		}
@@ -380,7 +386,10 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 {
 	zval *message, *file, *line, *code;
 	zend_class_entry *default_ce;
-	char *serialize_msg, *stack_msg, *format_msg,*msg;
+	char *serialize_msg, *stack_msg;
+#ifdef MAIL_ENABLE
+	char *format_msg, *msg;
+#endif
 	if (!exception) {
 		return;
 	}
@@ -391,6 +400,7 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 	code = zend_read_property(default_ce, exception, "code", sizeof("code") - 1, 0 TSRMLS_CC);
 	char *errmsg;
 	int len = spprintf(&errmsg, 0, "[exception]:%s:%d:%s", Z_STRVAL_P(file), Z_LVAL_P(line), Z_STRVAL_P(message));
+#ifdef MAIL_ENABLE
 	if (XLOG_G(mail_enable) && mail_strategy(XLOG_LEVEL_EMERGENCY, NULL, NULL, Z_STRVAL_P(file), Z_LVAL_P(line)) == SUCCESS){
 		msg = NULL;
 		if (get_exception_trace(exception, &msg, NULL, XLOG_EXCEPTION_TRACE_PRINT TSRMLS_CC) == SUCCESS){
@@ -405,7 +415,7 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 		}
 		efree(format_msg);
 	}
-	
+#endif
 	if (XLOG_G(buffer_enable) > 0){
 		add_log_no_malloc_msg(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_EMERGENCY, NULL, 0, errmsg, XLOG_FLAG_NO_SEND_MAIL TSRMLS_CC);
 		XLOG_G(index)++;
@@ -654,7 +664,7 @@ int  xlog_elapse_time(TSRMLS_D)
 		if(uri == NULL || Z_TYPE_P(uri) != IS_STRING){
 			break;
 		}
-		stream = get_file_handle_from_cache(XLOG_LEVEL_ELAPSE_TIME, XLOG_G(default_application), XLOG_G(default_module) TSRMLS_CC);
+		stream = get_file_handle_from_cache(XLOG_LEVEL_ELAPSE_TIME, XLOG_G(default_module) TSRMLS_CC);
 		if (stream == NULL){
 			break;
 		}

@@ -89,6 +89,7 @@ PHP_MINFO_FUNCTION(xlog);
 /*Declare  global variables*/
 
 ZEND_BEGIN_MODULE_GLOBALS(xlog)
+#ifdef MAIL_ENABLE
 	/**mail*/
 	zend_bool	mail_enable;
 	int			mail_level;
@@ -108,7 +109,7 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	int  mail_strategy_min;
 	int  mail_strategy_max;
 	int  mail_strategy_avg;
-
+#endif
 
 	/**redis*/
 	zend_bool   redis_enable;
@@ -128,8 +129,6 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	char  *default_path;
 
 	/**public*/
-	char  *host;
-	char  *default_application;
 	char  *default_module;
 	zend_bool   trace_error;
 	zend_bool   trace_stack;
@@ -142,7 +141,6 @@ ZEND_BEGIN_MODULE_GLOBALS(xlog)
 	php_stream	 *redis;
 	LogItem **log;
 	HashTable *file_handle;
-	char  *application;
 	char  *module;
 	char  *path;
 	int	  index;

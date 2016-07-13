@@ -67,7 +67,6 @@ if(var == NULL){ \
 struct _log_item
 {
 	time_t time ;
-	char *application;
 	char *module;
 	char *content;	
 	short level;
@@ -90,14 +89,14 @@ int			add_log_no_malloc_msg(LogItem **log, int index, short level, char *module,
 int			check_if_need_reset(LogItem **log, int *index TSRMLS_DC);
 int			log_free_item(LogItem **log);
 int			destory_log(LogItem ***log, int size TSRMLS_DC);
-int			save_to_redis(int level,char*application, char *module, char *content TSRMLS_DC);
-int			save_to_redis_with_model(int level, char*application, char *module, char *content TSRMLS_DC);
-void		save_to_mail(int level, char*application, char *module, char *content TSRMLS_DC);
-void		save_to_file(int level, char*application, char *module, char *content, int content_len TSRMLS_DC);
+int			save_to_redis(int level, char *module, char *content TSRMLS_DC);
+int			save_to_redis_with_model(int level,  char *module, char *content TSRMLS_DC);
+void		save_to_mail(int level,  char *module, char *content TSRMLS_DC);
+void		save_to_file(int level,char *module, char *content, int content_len TSRMLS_DC);
 void		save_log_no_buffer(int level, char* module, char *content, short flag TSRMLS_DC);
 void		save_log_with_buffer(LogItem **log TSRMLS_DC);
 char*		get_log_level_name(int level);
-php_stream *get_file_handle_from_cache(int level, char *application, char *module TSRMLS_DC);
+php_stream *get_file_handle_from_cache(int level, char *module TSRMLS_DC);
 void		file_handle_cache_ptr_dtor_wapper(FileHandleCache **cache);
 zend_bool	rotate_file(const char *filename, int filename_len, int max TSRMLS_DC);
 #endif

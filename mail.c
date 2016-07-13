@@ -16,6 +16,7 @@
 +----------------------------------------------------------------------+
 */
 #define _CRT_SECURE_NO_WARNINGS
+#ifdef MAIL_ENABLE
 #include "php.h"
 #include "php_open_temporary_file.h"
 #include "ext/standard/php_smart_str.h"
@@ -368,3 +369,4 @@ END:
 	return flag;
 }
 /* }}}*/
+#endif

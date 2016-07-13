@@ -51,14 +51,7 @@ int add_log(LogItem **log, int index, short level, char *module, int module_len,
 	if (tmp == NULL){
 		return FAILURE;
 	}
-	int application_len = 0;
-	char *application = NULL;
-	CHECK_AND_SET_VALUE_IF_NULL(application, application_len, application, default_application);
-	tmp->application = (char *)ecalloc(sizeof(char), application_len + 1);
-	if (tmp->application == NULL){
-		goto END;
-	}
-	memcpy(tmp->application, application, application_len);
+	
 	CHECK_AND_SET_VALUE_IF_NULL(module, module_len, module, default_module);
 	tmp->module = (char *)ecalloc(sizeof(char), module_len + 1);
 	if (tmp->module == NULL){
@@ -98,14 +91,6 @@ int  add_log_no_malloc_msg(LogItem **log, int index, short level, char *module, 
 		return FAILURE;
 	}
 	tmp->content = content;
-	int application_len = 0;
-	char *application = NULL;
-	CHECK_AND_SET_VALUE_IF_NULL(application, application_len, application, default_application);
-	tmp->application = (char *)ecalloc(sizeof(char), application_len + 1);
-	if (tmp->application == NULL){
-		goto END;
-	}
-	memcpy(tmp->application, application, application_len);
 
 	CHECK_AND_SET_VALUE_IF_NULL(module, module_len, module, default_module);
 	tmp->module = (char *)ecalloc(sizeof(char), module_len + 1);
@@ -154,9 +139,6 @@ int log_free_item(LogItem **log)
 	if (tmp->content != NULL){
 		efree(tmp->content);
 	}
-	if (tmp->application != NULL){
-		efree(tmp->application);
-	}
 	efree(tmp);
 	*log = NULL;
 	return SUCCESS;
@@ -182,9 +164,9 @@ int destory_log(LogItem ***log, int size TSRMLS_DC)
 }
 /* }}}*/
 
-/* {{{ save_to_redis(int level,  char *application, char *module, char *content TSRMLS_DC)
+/* {{{ save_to_redis(int level,  char *module, char *content TSRMLS_DC)
 */
-int save_to_redis(int level, char *application,char *module, char *content TSRMLS_DC)
+int save_to_redis(int level, char *module, char *content TSRMLS_DC)
 {
 	php_stream *stream;
 	int command_len = 0;
@@ -247,9 +229,7 @@ int save_to_redis(int level, char *application,char *module, char *content TSRML
 	time_t now = time(NULL);
 	strftime(day, 16, "%Y%m%d", localtime(&now));
 	int len = -1;
-	CHECK_AND_SET_VALUE_IF_NULL(module, len, module, default_module);
-	CHECK_AND_SET_VALUE_IF_NULL(application, len, application, default_application);
-	len = php_sprintf(key, "%s_%s_%s_%s_%s", XLOG_G(host), application,module, day, get_log_level_name(level));
+	len = php_sprintf(key, "%s_%s_%s", module, day, get_log_level_name(level));
 		
 	command_len = build_redis_command(&command, "LPUSH", 5, "ss", key, len, content, strlen(content));
 	execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
@@ -259,9 +239,9 @@ int save_to_redis(int level, char *application,char *module, char *content TSRML
 
 
 
-/* {{{ save_to_redis_with_model(int level,  char *application, char *module, char *content TSRMLS_DC)
+/* {{{ save_to_redis_with_model(int level,   char *module, char *content TSRMLS_DC)
 */
-int save_to_redis_with_model(int level, char *application, char *module, char *content TSRMLS_DC)
+int save_to_redis_with_model(int level, char *module, char *content TSRMLS_DC)
 {
 	php_stream *stream;
 	int command_len = 0;
@@ -328,11 +308,10 @@ int save_to_redis_with_model(int level, char *application, char *module, char *c
 	int len = -1, buf_microtime_len = strlen(buf_microtime);
 	
 	CHECK_AND_SET_VALUE_IF_NULL(module, len, module, default_module);
-	CHECK_AND_SET_VALUE_IF_NULL(application, len, application, default_application);
-	len = php_sprintf(key, "xlog_%s_%s_%s", XLOG_G(host), application, module);
+	len = php_sprintf(key, "xlog_%s",  module);
 	command_len = build_redis_command(&command, "RPUSH", 5, "ss", key, len, buf_microtime, buf_microtime_len);
 	execute_redis_command(stream, NULL, command, command_len TSRMLS_CC);
-	len = php_sprintf(key, "xlog_%s_%s_%s:a:%s", XLOG_G(host), application, module, buf_microtime);
+	len = php_sprintf(key, "xlog_%s:a:%s", module, buf_microtime);
 	command_len = build_redis_command(&command, "HMSET", 5, 
 		"ssssdss", 
 		key, len, 
@@ -348,9 +327,10 @@ int save_to_redis_with_model(int level, char *application, char *module, char *c
 }
 /* }}}*/
 
-/* {{{ void save_to_mail(int level,  char *application, char *module, char *content TSRMLS_DC)
+#ifdef MAIL_ENABLE
+/* {{{ void save_to_mail(int level, char *module, char *content TSRMLS_DC)
 */
-void save_to_mail(int level, char *application,char *module, char *content TSRMLS_DC)
+void save_to_mail(int level,char *module, char *content TSRMLS_DC)
 {
 	if (content == NULL){
 		return;
@@ -358,9 +338,8 @@ void save_to_mail(int level, char *application,char *module, char *content TSRML
 	zval *commands;
 	int len = -1;
 	CHECK_AND_SET_VALUE_IF_NULL(module, len, module, default_module);
-	CHECK_AND_SET_VALUE_IF_NULL(application, len, application, default_application);
 	char subject[256] = { 0 };
-	php_sprintf(subject, "%s-%s-%s-%s", XLOG_G(host), application,module, get_log_level_name(level));
+	php_sprintf(subject, "%s-%s", module, get_log_level_name(level));
 	zend_bool result = build_mail_commands(
 		&commands,
 		XLOG_G(mail_username),
@@ -383,18 +362,18 @@ void save_to_mail(int level, char *application,char *module, char *content TSRML
 
 }
 /* }}}*/
+#endif
 
-/* {{{ void save_to_file(int level, char*application, char *module, char *content,int content_len TSRMLS_DC)
+/* {{{ void save_to_file(int level, char *module, char *content,int content_len TSRMLS_DC)
 */
-void save_to_file(int level, char*application,char *module, char *content,int content_len TSRMLS_DC)
+void save_to_file(int level,char *module, char *content,int content_len TSRMLS_DC)
 {
 	if (content == NULL){
 		return;
 	}
 	int len = -1;
 	CHECK_AND_SET_VALUE_IF_NULL(module, len, module, default_module);
-	CHECK_AND_SET_VALUE_IF_NULL(application, len, application, default_application);
-	php_stream *stream = get_file_handle_from_cache(level, application, module TSRMLS_CC);
+	php_stream *stream = get_file_handle_from_cache(level, module TSRMLS_CC);
 	if (stream != NULL){
 		php_stream_write(stream,content,content_len);
 	}
@@ -415,22 +394,22 @@ void save_log_no_buffer(int level, char* module, char *content ,short flag TSRML
 	char *msg;
 	int len = -1;
 	CHECK_AND_SET_VALUE_IF_NULL(module, len, module, default_module);
-	char *application = NULL;
-	CHECK_AND_SET_VALUE_IF_NULL(application, len, application, default_application);
 	strftime(buf, 32, "%Y-%m-%d %H:%M:%S", localtime(&now));
-	len = spprintf(&msg, 0, "%s | %s | %s | %s | %s\n", get_log_level_name(level), buf,application, module, content);
+	len = spprintf(&msg, 0, "%s | %s | %s | %s\n", get_log_level_name(level), buf, module, content);
 	if (XLOG_G(redis_enable)){
-		save_to_redis_with_model(level, application, module, content TSRMLS_CC);
+		save_to_redis_with_model(level, module, content TSRMLS_CC);
 	}
+#ifdef MAIL_ENABLE
 	if (XLOG_G(mail_enable) 
 		&& flag == XLOG_FLAG_SEND_MAIL 
 		&& (level >= XLOG_G(mail_level))
-		&& mail_strategy(level, application, module, content, 0) == SUCCESS
+		&& mail_strategy(level, module, content, 0) == SUCCESS
 		){
-		save_to_mail(level, application, module, msg TSRMLS_CC);
+		save_to_mail(level, module, msg TSRMLS_CC);
 	}
+#endif
 	if (XLOG_G(file_enable)){
-		save_to_file(level, application, module, msg, len TSRMLS_CC);
+		save_to_file(level, module, msg, len TSRMLS_CC);
 	}
 	if (len > 0){
 		efree(msg);
@@ -449,22 +428,22 @@ void save_log_with_buffer(LogItem **log TSRMLS_DC)
 		if (log[i] == NULL)
 			continue;
 		strftime(buf, 32, "%Y-%m-%d %H:%M:%S", localtime(&(log[i]->time)));
-		len = spprintf(&msg, 0, "%s | %s | %s | %s | %s\n", get_log_level_name(log[i]->level), buf, log[i]->application,log[i]->module, log[i]->content);
+		len = spprintf(&msg, 0, "%s | %s | %s | %s\n", get_log_level_name(log[i]->level), buf,log[i]->module, log[i]->content);
 
 		if (XLOG_G(redis_enable)){
-			save_to_redis_with_model(log[i]->level, log[i]->application, log[i]->module, log[i]->content TSRMLS_CC);
+			save_to_redis_with_model(log[i]->level, log[i]->module, log[i]->content TSRMLS_CC);
 		}
-
+#ifdef MAIL_ENABLE
 		if (XLOG_G(mail_enable) 
 			&& log[i]->flag == XLOG_FLAG_SEND_MAIL 
 			&& (log[i]->level >= XLOG_G(mail_level))
-			&& mail_strategy(log[i]->level, log[i]->application, log[i]->module, log[i]->content, 0) == SUCCESS
+			&& mail_strategy(log[i]->level, log[i]->module, log[i]->content, 0) == SUCCESS
 			){
-			save_to_mail(log[i]->level, log[i]->application, log[i]->module, msg TSRMLS_CC);
+			save_to_mail(log[i]->level, log[i]->module, msg TSRMLS_CC);
 		}
-
+#endif
 		if (XLOG_G(file_enable)){
-			save_to_file(log[i]->level, log[i]->application,log[i]->module, msg, len TSRMLS_CC);
+			save_to_file(log[i]->level,log[i]->module, msg, len TSRMLS_CC);
 		}
 		efree(msg);
 		log_free_item(&log[i]);
@@ -495,9 +474,9 @@ char* get_log_level_name(int level)
 }
 /* }}}*/
 
-/* {{{ php_stream *get_file_handle_from_cache(int level, char *application,char *module TSRMLS_DC)
+/* {{{ php_stream *get_file_handle_from_cache(int level,char *module TSRMLS_DC)
 */
-php_stream *get_file_handle_from_cache(int level,char *application,char *module TSRMLS_DC)
+php_stream *get_file_handle_from_cache(int level,char *module TSRMLS_DC)
 {
 	HashTable *file_handle = XLOG_G(file_handle);
 	char key[256] = { 0 };
@@ -510,19 +489,15 @@ php_stream *get_file_handle_from_cache(int level,char *application,char *module 
 		zend_hash_init(file_handle, 8, NULL, (void(*)(void *))file_handle_cache_ptr_dtor_wapper, 0);
 		XLOG_G(file_handle) = file_handle;
 	}
-	key_len = php_sprintf(key, "%d_%s_%s", level,application, module);
+	key_len = php_sprintf(key, "%d_%s", level, module);
 	if (zend_hash_find(file_handle, key, key_len + 1, (void **)&tmp) == FAILURE){
 		char *dir = NULL, *file = NULL;
 		char day[16] = { 0 };
 		time_t now = time(NULL);
 		strftime(day, 16, "%Y%m%d", localtime(&now));
-		//logpath.host.application.module
-		spprintf(&dir, 0, "%s%c%s%c%s%c%s", 
+		//logpath.module
+		spprintf(&dir, 0, "%s%c%s", 
 			XLOG_G(path) == NULL ? XLOG_G(default_path) : XLOG_G(path), 
-			XLOG_DIRECTORY_SEPARATOR,
-			XLOG_G(host),
-			XLOG_DIRECTORY_SEPARATOR,
-			application,
 			XLOG_DIRECTORY_SEPARATOR,
 			module
 			);

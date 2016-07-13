@@ -219,22 +219,7 @@ ZEND_METHOD(XLog, getBasePath)
 }
 /*}}}*/
 
-/*{{{	proto public static XLog::setApplication($application)
-*/
-ZEND_METHOD(XLog, setApplication)
-{
-	XLOG_SET_METHOD(application,XLOG_FILE_PATTERN,60);
-}
-/*}}}
-*/
 
-/*{{{	proto public static XLog::getApplication()
-*/
-ZEND_METHOD(XLog, getApplication)
-{
-	XLOG_GET_METHOD(application);
-}
-/*}}}*/
 
 
 /*{{{	proto public static XLog::setLogger($logger)
@@ -272,7 +257,7 @@ ZEND_METHOD(XLog, getBuffer)
 		if (log[i] == NULL)
 			continue;
 		strftime(timebuf, 32, "%Y-%m-%d %H:%M:%S", localtime(&(log[i]->time)));
-		tmp_len = spprintf(&tmp, 0, "%s | %s | %s | %s | %s", get_log_level_name(log[i]->level), timebuf, log[i]->application,log[i]->module, log[i]->content);
+		tmp_len = spprintf(&tmp, 0, "%s | %s | %s | %s", get_log_level_name(log[i]->level), timebuf, log[i]->module, log[i]->content);
 		add_next_index_stringl(return_value, tmp, tmp_len, 0);
 	}
 }
@@ -390,9 +375,11 @@ ZEND_METHOD(XLog, status)
 {
 	array_init(return_value);
 	add_assoc_long(return_value, "redis_fail_time", XLOG_G(redis_fail_time));
-	add_assoc_long(return_value, "mail_fail_time", XLOG_G(mail_fail_time));
 	add_assoc_long(return_value, "redis_retry_interval", XLOG_G(redis_retry_interval));
+#ifdef MAIL_ENABLE
 	add_assoc_long(return_value, "mail_tretry_interval", XLOG_G(mail_retry_interval));
+	add_assoc_long(return_value, "mail_fail_time", XLOG_G(mail_fail_time));
+#endif
 }
 /*}}}*/
 
@@ -401,7 +388,9 @@ ZEND_METHOD(XLog, status)
 ZEND_METHOD(XLog, reset)
 {
 	XLOG_G(redis_fail_time) = 0;
+#ifdef MAIL_ENABLE
 	XLOG_G(mail_fail_time) = 0;
+#endif
 	RETURN_TRUE;
 }
 /*}}}*/
@@ -413,6 +402,7 @@ ZEND_GET_MODULE(xlog)
 /* {{{ PHP_INI
 */
 PHP_INI_BEGIN()
+#ifdef MAIL_ENABLE
 STD_PHP_INI_ENTRY("xlog.mail_smtp", XLOG_INI_DEFALUT_EMPTY, PHP_INI_SYSTEM, OnUpdateString, mail_smtp, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_port", "25", PHP_INI_SYSTEM, OnUpdateLongGEZero, mail_port, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_username", "", PHP_INI_SYSTEM, OnUpdateString, mail_username, zend_xlog_globals, xlog_globals)
@@ -430,7 +420,7 @@ STD_PHP_INI_ENTRY("xlog.mail_strategy_log_path", XLOG_INI_DEFALUT_EMPTY, PHP_INI
 STD_PHP_INI_ENTRY("xlog.mail_strategy_min", "5", PHP_INI_ALL, OnUpdateLongGEZero, mail_strategy_min, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_strategy_max", "100", PHP_INI_ALL, OnUpdateLongGEZero, mail_strategy_max, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.mail_strategy_avg", "10", PHP_INI_ALL, OnUpdateLongGEZero, mail_strategy_avg, zend_xlog_globals, xlog_globals)
-
+#endif
 STD_PHP_INI_ENTRY("xlog.redis_enable", "0", PHP_INI_ALL, OnUpdateBool, redis_enable, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.redis_host", XLOG_INI_DEFALUT_EMPTY, PHP_INI_SYSTEM, OnUpdateString, redis_host, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.redis_port", "6379", PHP_INI_SYSTEM, OnUpdateLongGEZero, redis_port, zend_xlog_globals, xlog_globals)
@@ -446,9 +436,7 @@ STD_PHP_INI_ENTRY("xlog.rotate_size", "2048", PHP_INI_ALL, OnUpdateLongGEZero, r
 STD_PHP_INI_ENTRY("xlog.rotate_max", "100", PHP_INI_ALL, OnUpdateLongGEZero, rotate_max, zend_xlog_globals, xlog_globals)
 
 
-STD_PHP_INI_ENTRY("xlog.host", XLOG_INI_DEFAULT_HOST, PHP_INI_SYSTEM, OnUpdateString, host, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.default_module", XLOG_INI_DEFAULT_MODULE, PHP_INI_SYSTEM, OnUpdateString, default_module, zend_xlog_globals, xlog_globals)
-STD_PHP_INI_ENTRY("xlog.default_application", XLOG_INI_DEFAULT_APPLICATION, PHP_INI_SYSTEM, OnUpdateString, default_application, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.default_path", XLOG_INI_DEFAULT_PATH, PHP_INI_SYSTEM, OnUpdateString, default_path, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.trace_error", "0", PHP_INI_ALL, OnUpdateBool, trace_error, zend_xlog_globals, xlog_globals)
 STD_PHP_INI_ENTRY("xlog.trace_stack", "0", PHP_INI_ALL, OnUpdateBool, trace_stack, zend_xlog_globals, xlog_globals)
@@ -468,8 +456,6 @@ zend_function_entry xlog_methods[] = {
 	ZEND_ME(XLog, getBasePath, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, setLogger, arg_info_set_logger, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, getLastLogger, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-	ZEND_ME(XLog, setApplication, arg_info_set_application, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-	ZEND_ME(XLog, getApplication, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, getBuffer, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, flush, arg_info_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(XLog, debug, arg_info_log_common, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -493,11 +479,12 @@ zend_function_entry xlog_methods[] = {
 PHP_GINIT_FUNCTION(xlog)
 {
 	xlog_globals->redis_fail_time = 0;
+#ifdef MAIL_ENABLE
 	xlog_globals->mail_fail_time = 0;
+#endif
 	xlog_globals->redis = NULL;
 	xlog_globals->log = NULL;
 	xlog_globals->index = 0;
-	xlog_globals->application = NULL;
 	xlog_globals->module = NULL;
 	xlog_globals->path = NULL;
 	xlog_globals->file_handle = NULL;
@@ -546,7 +533,6 @@ PHP_RINIT_FUNCTION(xlog)
 {
 	XLOG_G(redis) = NULL;
 	XLOG_G(file_handle) = NULL;
-	XLOG_G(application) = NULL;
 	XLOG_G(module) = NULL;
 	XLOG_G(path) = NULL;
 	XLOG_G(index) = 0;
@@ -565,17 +551,18 @@ PHP_RINIT_FUNCTION(xlog)
 	if (XLOG_G(redis_retry_interval) < 10){
 		XLOG_G(redis_retry_interval) = 10;
 	}
+#ifdef MAIL_ENABLE
 	if (XLOG_G(mail_retry_interval) < 10){
 		XLOG_G(mail_retry_interval) = 10;
 	}
+#endif
 	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(default_path), 512, XLOG_PATH_PATTERN);
-	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(default_application), 60, XLOG_FILE_PATTERN);
 	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(default_module), 60, XLOG_FILE_PATTERN);
-	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(host), 60, XLOG_FILE_PATTERN);
 	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(redis_host), 50, XLOG_FILE_PATTERN);
+#ifdef MAIL_ENABLE
 	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(mail_smtp), 512, XLOG_FILE_PATTERN);
 	XLOG_CHECK_PATH_LENGTH_AND_VALIDATE(XLOG_G(mail_strategy_log_path), 128, XLOG_PATH_PATTERN);
-	
+#endif	
 	return SUCCESS;
 }
 /* }}} */
@@ -590,9 +577,6 @@ PHP_RSHUTDOWN_FUNCTION(xlog)
 	}
 	if (XLOG_G(redis) != NULL){
 		php_stream_close(XLOG_G(redis));
-	}
-	if (XLOG_G(application) != NULL){
-		efree(XLOG_G(application));
 	}
 	if (XLOG_G(module) != NULL){
 		efree(XLOG_G(module));

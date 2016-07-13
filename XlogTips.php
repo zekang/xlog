@@ -33,28 +33,6 @@ class XLog
         return 'the base_path';
     }
 	
-	/**
-     * 设置当前应用名称
-     *
-     * @param $application
-     *
-     * @return bool
-     */
-	public static function setApplication($application)
-    {
-        return TRUE;
-    }
-
-    /**
-     * 获取当前应用名称
-     *
-     * @return string
-     */
-     public static function getApplication()
-    {
-        return 'the application';
-    }
-
     /**
      * 设置模块目录
      * @param string $module
