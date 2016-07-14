@@ -1,37 +1,10 @@
 # xlog
 php logger
 
+# xlog
+php logger
+
 [xlog]
-
-xlog.mail_smtp = "smtp.126.com"
-
-xlog.mail_port = 25
-
-xlog.mail_from = "xxxxx@126.com"
-
-xlog.mail_from_name="xxxxx@126.com"
-
-xlog.mail_username = "xxxxx@126.com"
-
-xlog.mail_password = "xxxxx@"
-
-xlog.mail_to = "xxxxx@qq.com"
-
-xlog.mail_ssl  = 0
-
-xlog.mail_enable = 0
-
-xlog.mail_level = 8
-
-xlog.mail_strategy_enable = 1
-
-xlog.mail_strategy_log_path = d:\tmp\mail
-
-xlog.mail_strategy_min = 10
-
-xlog.mail_strategy_max = 50
-
-xlog.mail_strategy_avg = 10
 
 xlog.trace_error = 1
 
@@ -73,3 +46,4 @@ xlog.rotate_max = 20
 
 xlog.rotate_size = 15
 
+xlog.profiling_time = 3
