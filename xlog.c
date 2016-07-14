@@ -584,6 +584,7 @@ PHP_RINIT_FUNCTION(xlog)
  */
 PHP_RSHUTDOWN_FUNCTION(xlog)
 {
+	xlog_elapse_time(TSRMLS_C);
 	if (XLOG_G(log) != NULL){
 		save_log_with_buffer(XLOG_G(log) TSRMLS_CC);
 		destory_log(&XLOG_G(log), XLOG_G(buffer) TSRMLS_CC);
@@ -600,7 +601,6 @@ PHP_RSHUTDOWN_FUNCTION(xlog)
 	if (XLOG_G(path) != NULL){
 		efree(XLOG_G(path));
 	}
-	xlog_elapse_time(TSRMLS_C);
 	if (XLOG_G(file_handle) != NULL){
 		zend_hash_destroy(XLOG_G(file_handle));
 		FREE_HASHTABLE(XLOG_G(file_handle));
