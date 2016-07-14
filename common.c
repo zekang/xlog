@@ -645,10 +645,10 @@ zval * xlog_request_query(uint type, char * name, uint len TSRMLS_DC)
 int  xlog_elapse_time(TSRMLS_D)
 {
 	char *buf;
-	char timebuf[32] = { 0 };
 	int buf_len = 0, elapse = 0;
 	php_stream *stream = NULL;
 	zval *uri = NULL;
+	char *module = NULL;
 	do{
 		if (strncmp("cli", sapi_module.name, 3) == 0){
 			break;
@@ -664,14 +664,16 @@ int  xlog_elapse_time(TSRMLS_D)
 		if(uri == NULL || Z_TYPE_P(uri) != IS_STRING){
 			break;
 		}
-		stream = get_file_handle_from_cache(XLOG_LEVEL_ELAPSE_TIME, XLOG_G(default_module) TSRMLS_CC);
-		if (stream == NULL){
-			break;
+		module = XLOG_G(module) == NULL ? XLOG_G(default_module) : XLOG_G(module);
+		buf_len = spprintf(&buf, 8192, "%d\t%s\n", elapse, Z_STRVAL_P(uri));
+		if (XLOG_G(buffer_enable)){
+			if (add_log(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_ELAPSE_TIME, module, strlen(module), buf, buf_len, XLOG_FLAG_SEND_MAIL TSRMLS_CC) == SUCCESS){
+				XLOG_G(index)++;
+			}
 		}
-		strftime(timebuf, 32, "%Y-%m-%d %H:%M:%S", localtime(&XLOG_G(request_time)));
-		buf_len = spprintf(&buf, 8192, "%s\t%d\t%s\n", timebuf, elapse, Z_STRVAL_P(uri));
-		php_stream_write(stream, buf, buf_len);
-		efree(buf);
+		else{
+			save_log_no_buffer(XLOG_LEVEL_ELAPSE_TIME, module, buf, XLOG_FLAG_SEND_MAIL TSRMLS_CC);
+		}
 	} while (0);
 	if (uri != NULL){
 		zval_ptr_dtor(&uri);
