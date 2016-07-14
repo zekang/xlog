@@ -1,9 +1,6 @@
 # xlog
 php logger
 
-# xlog
-php logger
-
 [xlog]
 
 xlog.trace_error = 1
