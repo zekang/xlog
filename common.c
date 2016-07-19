@@ -39,6 +39,10 @@
 #include <sys/time.h>
 #endif
 
+#ifndef Z_ADDREF_P 
+#define Z_ADDREF_P(pz) (++(pz)->refcount) 
+#endif
+
 #define MICRO_IN_SEC 1000000.00
 
 /* {{{ int split_string(const char *str, unsigned char split, char ***ret, int *count)
@@ -665,7 +669,7 @@ int  xlog_elapse_time(TSRMLS_D)
 			break;
 		}
 		module = XLOG_G(module) == NULL ? XLOG_G(default_module) : XLOG_G(module);
-		buf_len = spprintf(&buf, 8192, "%d\t%s\n", elapse, Z_STRVAL_P(uri));
+		buf_len = spprintf(&buf, 8192, "%d\t%s", elapse, Z_STRVAL_P(uri));
 		if (XLOG_G(buffer_enable)){
 			if (add_log(XLOG_G(log), XLOG_G(index), XLOG_LEVEL_ELAPSE_TIME, module, strlen(module), buf, buf_len, XLOG_FLAG_SEND_MAIL TSRMLS_CC) == SUCCESS){
 				XLOG_G(index)++;
