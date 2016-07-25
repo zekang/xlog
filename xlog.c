@@ -37,7 +37,7 @@
 
 #define XLOG_SET_METHOD(name,pattern,max_len)   \
 	char *name; \
-	size_t name##_len; \
+	int name##_len; \
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name##_len) == FAILURE){ \
 		RETURN_FALSE; \
 	}\
