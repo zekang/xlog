@@ -45,6 +45,9 @@
 
 #define MICRO_IN_SEC 1000000.00
 
+#define XLOG_EX(element) execute_data->element
+#define XLOG_CACHED_PTR(num) (execute_data->op_array)->run_time_cache[(num)]
+
 /* {{{ int split_string(const char *str, unsigned char split, char ***ret, int *count)
 */
 int split_string(const char *str, unsigned char split, char ***ret, int *count)
@@ -384,10 +387,74 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 }
 /* }}}*/
 
+int is_catched(zval *exception)
+{
+	zend_execute_data *execute_data;
+	int i, nested;
+	zend_uint op_num=0,catch_op_num = 0;
+	zend_op *opline;
+	zend_class_entry *ce, *catch_ce;
+	int flag = 0;
+	execute_data = EG(current_execute_data);
+	do{
+		op_num = XLOG_EX(opline) - XLOG_EX(op_array)->opcodes;
+		for (i = 0; i< XLOG_EX(op_array)->last_try_catch; i++) {
+			if (XLOG_EX(op_array)->try_catch_array[i].try_op > op_num) {
+				break;
+			}
+			if (op_num < XLOG_EX(op_array)->try_catch_array[i].catch_op) {
+				catch_op_num = XLOG_EX(op_array)->try_catch_array[i].catch_op;
+			}
+		}
+		if (catch_op_num){
+			break;
+		}
+PREV_DATA:
+		if (!XLOG_EX(prev_execute_data)){
+			goto END;
+		}
+		nested = XLOG_EX(nested);
+		execute_data = XLOG_EX(prev_execute_data);
+		if (!nested){
+			goto PREV_DATA;
+		}
+	} while (1);
+	
+	if (!catch_op_num){
+		return flag;
+	}
+	opline = &(XLOG_EX(op_array))->opcodes[catch_op_num];
+	if (opline->opcode != ZEND_CATCH){
+		goto PREV_DATA;
+	}
+	ce = Z_OBJCE_P(exception);
+	do{
+		if (XLOG_CACHED_PTR(opline->op1.literal->cache_slot)) {
+			catch_ce = XLOG_CACHED_PTR(opline->op1.literal->cache_slot);
+		}
+		else {
+			catch_ce = zend_fetch_class_by_name(Z_STRVAL_P(opline->op1.zv), Z_STRLEN_P(opline->op1.zv), opline->op1.literal + 1, ZEND_FETCH_CLASS_AUTO TSRMLS_CC);
+		}
+		if (catch_ce){
+			php_printf("<h3>catch:%s.</h3>\n", catch_ce->name);
+		}
+		if (ce == catch_ce || instanceof_function(ce, catch_ce TSRMLS_CC)){
+			flag = 1;
+			break;
+		}	
+		if (opline->result.num) {
+			goto PREV_DATA;
+		}
+		opline = &(XLOG_EX(op_array))->opcodes[opline->extended_value];
+	} while (1);
+END:
+	return flag;
+}
 /* {{{ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 */
 void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 {
+
 	zval *message, *file, *line, *code;
 	zend_class_entry *default_ce;
 	char *serialize_msg, *stack_msg;
@@ -395,7 +462,11 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 	char *format_msg, *msg;
 #endif
 	if (!exception) {
-		return;
+		goto END;
+	}
+	if (is_catched(exception)){
+		php_printf("<h1>exception catched!</h1>\n");
+		goto END;
 	}
 	default_ce = zend_exception_get_default(TSRMLS_C);
 	message = zend_read_property(default_ce, exception, "message", sizeof("message") - 1, 0 TSRMLS_CC);
@@ -404,6 +475,7 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 	code = zend_read_property(default_ce, exception, "code", sizeof("code") - 1, 0 TSRMLS_CC);
 	char *errmsg;
 	int len = spprintf(&errmsg, 0, "[exception]:%s:%d:%s", Z_STRVAL_P(file), Z_LVAL_P(line), Z_STRVAL_P(message));
+	
 #ifdef MAIL_ENABLE
 	if (XLOG_G(mail_enable) && mail_strategy(XLOG_LEVEL_EMERGENCY, NULL, NULL, Z_STRVAL_P(file), Z_LVAL_P(line)) == SUCCESS){
 		msg = NULL;
@@ -442,6 +514,7 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 			efree(stack_msg);
 		}
 	}
+	END:
 	if (old_throw_exception_hook) {
 		old_throw_exception_hook(exception TSRMLS_CC);
 	}
