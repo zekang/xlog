@@ -439,8 +439,8 @@ PREV_DATA:
 		else {
 			catch_ce = zend_fetch_class_by_name(Z_STRVAL_P(opline->op1.zv), Z_STRLEN_P(opline->op1.zv), opline->op1.literal + 1, ZEND_FETCH_CLASS_AUTO TSRMLS_CC);
 		}
-#elif
-		catch_ce = XLOG_EX_T(opline->op1.u.var).class_entry
+#else
+		catch_ce = XLOG_EX_T(opline->op1.u.var).class_entry;
 #endif
 		if (catch_ce){
 			php_printf("<h3>catch:%s.</h3>\n", catch_ce->name);
@@ -453,7 +453,7 @@ PREV_DATA:
 		
 #if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 3
 		if (opline->result.num) {
-#elif
+#else
 		if (opline->op1.u.EA.type) {
 #endif
 			goto PREV_DATA;
