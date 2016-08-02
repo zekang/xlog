@@ -47,6 +47,7 @@
 
 #define XLOG_EX(element) execute_data->element
 #define XLOG_CACHED_PTR(num) (execute_data->op_array)->run_time_cache[(num)]
+#define XLOG_EX_T(offset) (*(temp_variable *)((char *) XLOG_EX(Ts) + offset))
 
 /* {{{ int split_string(const char *str, unsigned char split, char ***ret, int *count)
 */
@@ -413,11 +414,13 @@ PREV_DATA:
 		if (!XLOG_EX(prev_execute_data)){
 			goto END;
 		}
-		nested = XLOG_EX(nested);
 		execute_data = XLOG_EX(prev_execute_data);
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3
+		nested = XLOG_EX(nested);
 		if (!nested){
 			goto PREV_DATA;
 		}
+#endif
 	} while (1);
 	
 	if (!catch_op_num){
@@ -429,12 +432,16 @@ PREV_DATA:
 	}
 	ce = Z_OBJCE_P(exception);
 	do{
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 3
 		if (XLOG_CACHED_PTR(opline->op1.literal->cache_slot)) {
 			catch_ce = XLOG_CACHED_PTR(opline->op1.literal->cache_slot);
 		}
 		else {
 			catch_ce = zend_fetch_class_by_name(Z_STRVAL_P(opline->op1.zv), Z_STRLEN_P(opline->op1.zv), opline->op1.literal + 1, ZEND_FETCH_CLASS_AUTO TSRMLS_CC);
 		}
+#elif
+		catch_ce = XLOG_EX_T(opline->op1.u.var).class_entry
+#endif
 		if (catch_ce){
 			php_printf("<h3>catch:%s.</h3>\n", catch_ce->name);
 		}
@@ -442,7 +449,13 @@ PREV_DATA:
 			flag = 1;
 			break;
 		}	
+
+		
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 3
 		if (opline->result.num) {
+#elif
+		if (opline->op1.u.EA.type) {
+#endif
 			goto PREV_DATA;
 		}
 		opline = &(XLOG_EX(op_array))->opcodes[opline->extended_value];
