@@ -469,7 +469,8 @@ int is_catched(zval *exception)
 			if (XLOG_EX(op_array)->try_catch_array[i].try_op > op_num) {
 				break;
 			}
-			if (op_num < XLOG_EX(op_array)->try_catch_array[i].catch_op) {
+			if (op_num >= XLOG_EX(op_array)->try_catch_array[i].try_op
+				&&op_num < XLOG_EX(op_array)->try_catch_array[i].catch_op) {
 				catch_op_num = XLOG_EX(op_array)->try_catch_array[i].catch_op;
 			}
 		}
