@@ -388,11 +388,12 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 }
 /* }}}*/
 
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION ==5
 int is_catched(zval *exception)
 {
 	zend_execute_data *execute_data;
 	int i, nested;
-	zend_uint op_num=0,catch_op_num = 0;
+	zend_uint op_num = 0, catch_op_num = 0;
 	zend_op *opline;
 	zend_class_entry *ce, *catch_ce;
 	int flag = 0;
@@ -410,19 +411,17 @@ int is_catched(zval *exception)
 		if (catch_op_num){
 			break;
 		}
-PREV_DATA:
+	PREV_DATA:
 		if (!XLOG_EX(prev_execute_data)){
 			goto END;
 		}
 		execute_data = XLOG_EX(prev_execute_data);
-#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3
 		nested = XLOG_EX(nested);
 		if (!nested){
 			goto PREV_DATA;
 		}
-#endif
 	} while (1);
-	
+
 	if (!catch_op_num){
 		return flag;
 	}
@@ -432,30 +431,20 @@ PREV_DATA:
 	}
 	ce = Z_OBJCE_P(exception);
 	do{
-#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 3
 		if (XLOG_CACHED_PTR(opline->op1.literal->cache_slot)) {
 			catch_ce = XLOG_CACHED_PTR(opline->op1.literal->cache_slot);
 		}
 		else {
 			catch_ce = zend_fetch_class_by_name(Z_STRVAL_P(opline->op1.zv), Z_STRLEN_P(opline->op1.zv), opline->op1.literal + 1, ZEND_FETCH_CLASS_AUTO TSRMLS_CC);
 		}
-#else
-		catch_ce = XLOG_EX_T(opline->op1.u.var).class_entry;
-#endif
 		if (catch_ce){
 			php_printf("<h3>catch:%s.</h3>\n", catch_ce->name);
 		}
 		if (ce == catch_ce || instanceof_function(ce, catch_ce TSRMLS_CC)){
 			flag = 1;
 			break;
-		}	
-
-		
-#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 3
+		}
 		if (opline->result.num) {
-#else
-		if (opline->op1.u.EA.type) {
-#endif
 			goto PREV_DATA;
 		}
 		opline = &(XLOG_EX(op_array))->opcodes[opline->extended_value];
@@ -463,6 +452,74 @@ PREV_DATA:
 END:
 	return flag;
 }
+#elif PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION ==2
+int is_catched(zval *exception)
+{
+	zend_execute_data *execute_data;
+	int i, nested;
+	zend_uint op_num = 0, catch_op_num = 0;
+	zend_op *opline;
+	zend_class_entry *ce, *catch_ce;
+	zval *class_name;
+	int flag = 0;
+	execute_data = EG(current_execute_data);
+	do{
+		op_num = XLOG_EX(opline) - XLOG_EX(op_array)->opcodes;
+		for (i = 0; i< XLOG_EX(op_array)->last_try_catch; i++) {
+			if (XLOG_EX(op_array)->try_catch_array[i].try_op > op_num) {
+				break;
+			}
+			if (op_num < XLOG_EX(op_array)->try_catch_array[i].catch_op) {
+				catch_op_num = XLOG_EX(op_array)->try_catch_array[i].catch_op;
+			}
+		}
+		if (catch_op_num){
+			break;
+		}
+	PREV_DATA:
+		if (!XLOG_EX(prev_execute_data)){
+			goto END;
+		}
+		execute_data = XLOG_EX(prev_execute_data);
+	} while (1);
+
+	if (!catch_op_num){
+		return flag;
+	}
+	opline = &(XLOG_EX(op_array))->opcodes[catch_op_num];
+	ce = Z_OBJCE_P(exception);
+	do{
+		if (opline->opcode == ZEND_FETCH_CLASS){
+			class_name = &opline->op2.u.constant;
+			switch (Z_TYPE_P(class_name)) {
+			case IS_OBJECT:
+				catch_ce = Z_OBJCE_P(class_name);
+				break;
+			case IS_STRING:
+				catch_ce = zend_fetch_class(Z_STRVAL_P(class_name), Z_STRLEN_P(class_name), opline->extended_value TSRMLS_CC);
+				break;
+			}
+			opline++;
+		}
+		if (opline->opcode != ZEND_CATCH){
+			goto PREV_DATA;
+		}
+		if (catch_ce){
+			php_printf("<h3>catch:%s.</h3>\n", catch_ce->name);
+		}
+		if (ce == catch_ce || instanceof_function(ce, catch_ce TSRMLS_CC)){
+			flag = 1;
+			break;
+		}
+		if (opline->result.num) {
+			goto PREV_DATA;
+		}
+		opline = &(XLOG_EX(op_array))->opcodes[opline->extended_value];
+	} while (1);
+END:
+	return flag;
+}
+#endif
 /* {{{ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 */
 void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
