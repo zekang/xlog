@@ -464,6 +464,9 @@ int is_catched(zval *exception)
 	int flag = 0;
 	execute_data = EG(current_execute_data);
 	do{
+		if(XLOG_EX(opline) == NULL || XLOG_EX(op_array)->opcodes==NULL){
+            goto PREV_DATA;
+        }
 		op_num = XLOG_EX(opline) - XLOG_EX(op_array)->opcodes;
 		for (i = 0; i< XLOG_EX(op_array)->last_try_catch; i++) {
 			if (XLOG_EX(op_array)->try_catch_array[i].try_op > op_num) {
