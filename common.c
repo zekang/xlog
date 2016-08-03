@@ -511,7 +511,7 @@ int is_catched(zval *exception)
 			flag = 1;
 			break;
 		}
-		if (opline->result.num) {
+		if (opline->op1.u.EA.type) {
 			goto PREV_DATA;
 		}
 		opline = &(XLOG_EX(op_array))->opcodes[opline->extended_value];
