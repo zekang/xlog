@@ -325,7 +325,7 @@ int get_var_export_data(char **ret, int *ret_len TSRMLS_DC)
 /* {{{ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
 */
 void xlog_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
-{
+{ 
 	char *msg, *error_msg, *serialize_msg, *stack_msg;
 #ifdef MAIL_ENABLE
 	char *format_msg;
@@ -399,6 +399,9 @@ int is_catched(zval *exception)
 	int flag = 0;
 	execute_data = EG(current_execute_data);
 	do{
+		if (XLOG_EX(opline) == NULL || XLOG_EX(op_array)->opcodes == NULL){
+			goto PREV_DATA;
+		}
 		op_num = XLOG_EX(opline) - XLOG_EX(op_array)->opcodes;
 		for (i = 0; i< XLOG_EX(op_array)->last_try_catch; i++) {
 			if (XLOG_EX(op_array)->try_catch_array[i].try_op > op_num) {
@@ -438,7 +441,7 @@ int is_catched(zval *exception)
 			catch_ce = zend_fetch_class_by_name(Z_STRVAL_P(opline->op1.zv), Z_STRLEN_P(opline->op1.zv), opline->op1.literal + 1, ZEND_FETCH_CLASS_AUTO TSRMLS_CC);
 		}
 		if (catch_ce){
-			php_printf("<h3>catch:%s.</h3>\n", catch_ce->name);
+		//	php_printf("<h3>catch:%s.</h3>\n", catch_ce->name);
 		}
 		if (ce == catch_ce || instanceof_function(ce, catch_ce TSRMLS_CC)){
 			flag = 1;
@@ -539,7 +542,7 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 		goto END;
 	}
 	if (is_catched(exception)){
-		php_printf("<h1>exception catched!</h1>\n");
+	//	php_printf("<h1>exception catched!</h1>\n");
 		goto END;
 	}
 	default_ce = zend_exception_get_default(TSRMLS_C);
