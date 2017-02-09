@@ -32,7 +32,7 @@
 #include "redis.h"
 #include "mail.h"
 #include "log.h"
-
+#include "profile.h"
 
 
 #define XLOG_SET_METHOD(name,pattern,max_len)   \
@@ -117,10 +117,41 @@ ZEND_ARG_INFO(0,application)
 ZEND_END_ARG_INFO()
 /* }}} */
 
+
+/**
+* Start XHProf profiling in hierarchical mode.
+*
+* @param  long $flags  flags for hierarchical mode
+* @return void
+* @author kannan
+*/
+PHP_FUNCTION(profile_enable) {
+	hp_begin( TSRMLS_CC);
+}
+
+/**
+* Stops XHProf from profiling in hierarchical mode anymore and returns the
+* profile info.
+*
+* @param  void
+* @return array  hash-array of XHProf's profile info
+* @author kannan, hzhao
+*/
+PHP_FUNCTION(profile_disable) {
+	if (hp_globals.enabled) {
+		hp_stop(TSRMLS_C);
+		RETURN_ZVAL(hp_globals.stats_count, 1, 0);
+	}
+	/* else null is returned */
+}
+
+
 /* {{{ xlog_functions[]
  *
  */
 const zend_function_entry xlog_functions[] = {
+	PHP_FE(profile_enable,NULL)
+	PHP_FE(profile_disable, NULL)
 	PHP_FE_END	/* Must be the last line in xlog_functions[] */
 };
 /* }}} */
@@ -511,6 +542,7 @@ PHP_MINIT_FUNCTION(xlog)
 	zend_declare_class_constant_long(xlog_ce, ZEND_STRL("EMERGENCY"), XLOG_LEVEL_EMERGENCY TSRMLS_CC);
 	REGISTER_INI_ENTRIES();
 	init_error_hooks(TSRMLS_C);
+	profile_minit(TSRMLS_C);
 	return SUCCESS;
 }
 /* }}} */
@@ -523,6 +555,7 @@ PHP_MSHUTDOWN_FUNCTION(xlog)
 	*/
 	UNREGISTER_INI_ENTRIES();
 	restore_error_hooks(TSRMLS_C);
+	profile_mend(TSRMLS_C);
 	return SUCCESS;
 }
 /* }}} */
@@ -589,6 +622,7 @@ PHP_RSHUTDOWN_FUNCTION(xlog)
 		zend_hash_destroy(XLOG_G(file_handle));
 		FREE_HASHTABLE(XLOG_G(file_handle));
 	}
+	profile_rend(TSRMLS_C);
 	return SUCCESS;
 }
 /* }}} */
