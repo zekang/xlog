@@ -388,8 +388,8 @@ void xlog_error_cb(int type, const char *error_filename, const uint error_lineno
 }
 /* }}}*/
 
-#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION ==5
-int is_catched(zval *exception)
+#if PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 4
+int is_catched(zval *exception TSRMLS_DC)
 {
 	zend_execute_data *execute_data;
 	int i, nested;
@@ -456,7 +456,7 @@ END:
 	return flag;
 }
 #elif PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION ==2
-int is_catched(zval *exception)
+int is_catched(zval *exception TSRMLS_DC)
 {
 	zend_execute_data *execute_data;
 	int i, nested;
@@ -541,7 +541,7 @@ void xlog_throw_exception_hook(zval *exception TSRMLS_DC)
 	if (!exception) {
 		goto END;
 	}
-	if (is_catched(exception)){
+	if (is_catched(exception TSRMLS_CC)){
 	//	php_printf("<h1>exception catched!</h1>\n");
 		goto END;
 	}
