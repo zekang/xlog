@@ -543,13 +543,19 @@ struct _zend_fcall_info *fci, int ret TSRMLS_DC) {
 		/* no old override to begin with. so invoke the builtin's implementation  */
 		zend_op *opline = EX(opline);
 #if ZEND_EXTENSION_API_NO >= 220100525
-		temp_variable *retvar = &EX_T(opline->result.var);
-		((zend_internal_function *)EX(function_state).function)->handler(
-			opline->extended_value,
-			retvar->var.ptr,
-			(EX(function_state).function->common.fn_flags & ZEND_ACC_RETURN_REFERENCE) ?
-			&retvar->var.ptr : NULL,
-			EX(object), ret TSRMLS_CC);
+		if (opline){
+			temp_variable *retvar = &EX_T(opline->result.var);
+			((zend_internal_function *)EX(function_state).function)->handler(
+				opline->extended_value,
+				retvar->var.ptr,
+				(EX(function_state).function->common.fn_flags & ZEND_ACC_RETURN_REFERENCE) ?
+				&retvar->var.ptr : NULL,
+				EX(object), ret TSRMLS_CC);
+		}else{
+			((zend_internal_function *) EX(function_state).function)->handler(fci->param_count, *fci->retval_ptr_ptr, fci->retval_ptr_ptr, fci->object_ptr, 1 TSRMLS_CC);
+
+		}
+		
 #else
 		((zend_internal_function *)EX(function_state).function)->handler(
 			opline->extended_value,
