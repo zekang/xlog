@@ -205,3 +205,4 @@ int execute_redis_command(php_stream *stream, zval **ret, char *command, int com
 	return SUCCESS;
 }
 /* }}}*/
+

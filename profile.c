@@ -61,7 +61,7 @@ static zend_op_array * (*_zend_compile_string) (zval *source_string, char *filen
 *
 * @author cjiang
 */
-static inline uint8 hp_inline_hash(char * str) {
+inline uint8 hp_inline_hash(char * str) {
 	ulong h = 5381;
 	uint i = 0;
 	uint8 res = 0;
@@ -789,7 +789,7 @@ void hp_mode_hier_endfn_cb(hp_entry_t **entries  TSRMLS_DC) {
 *
 * @author kannan, veeve
 */
-void hp_init_profiler_state(TSRMLS_DC) {
+void hp_init_profiler_state(TSRMLS_D) {
 	/* Setup globals */
 	if (!hp_globals.ever_enabled) {
 		hp_globals.ever_enabled = 1;
@@ -821,7 +821,7 @@ void hp_init_profiler_state(TSRMLS_DC) {
 * It replaces all the functions like zend_execute, zend_execute_internal,
 * etc that needs to be instrumented with their corresponding proxies.
 */
- void hp_begin(TSRMLS_DC) {
+ void hp_begin(TSRMLS_D) {
 	if (!hp_globals.enabled) {
 		int hp_profile_flag = 1;
 		hp_globals.enabled = 1;
@@ -859,7 +859,7 @@ void hp_init_profiler_state(TSRMLS_DC) {
 		hp_globals.mode_cb.end_fn_cb = hp_mode_hier_endfn_cb;
 
 		/* one time initializations */
-		hp_init_profiler_state(TSRMLS_CC);
+		hp_init_profiler_state(TSRMLS_C);
 
 		/* start profiling from fictitious main() */
 		BEGIN_PROFILING(&hp_globals.entries, ROOT_SYMBOL, hp_profile_flag);
@@ -910,7 +910,7 @@ void hp_init_profiler_state(TSRMLS_DC) {
 	hp_globals.enabled = 0;
 }
 
-void profile_minit(TSRMLS_DC)
+void profile_minit(TSRMLS_D)
 {
 	int i;
 	hp_globals.stats_count = NULL;
@@ -924,12 +924,12 @@ void profile_minit(TSRMLS_DC)
 
 }
 
-void profile_mend(TSRMLS_DC)
+void profile_mend(TSRMLS_D)
 {
 	hp_free_the_free_list();
 }
 
-void profile_rend(TSRMLS_DC)
+void profile_rend(TSRMLS_D)
 {
-	hp_end(TSRMLS_CC);
+	hp_end(TSRMLS_C);
 }

@@ -51,3 +51,4 @@ int  xlog_get_microtime(char *ret, int max, int extra);
 zval * xlog_request_query(uint type, char * name, uint len TSRMLS_DC);
 int  xlog_elapse_time(TSRMLS_D);
 #endif
+

@@ -28,3 +28,4 @@ zval*	parse_redis_response(php_stream *stream TSRMLS_DC);
 int		parse_redis_response_discard_result(php_stream *stream TSRMLS_DC);
 
 #endif
+

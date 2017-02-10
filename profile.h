@@ -90,7 +90,7 @@ typedef struct hp_global_t {
 /* XHProf global state */
 hp_global_t       hp_globals;
 
-void hp_begin(TSRMLS_DC);
+void hp_begin(TSRMLS_D);
 void hp_stop(TSRMLS_D);
 void hp_end(TSRMLS_D);
 uint8 hp_inline_hash(char *symbol);
@@ -106,9 +106,9 @@ void hp_inc_count_wt(zval *counts, char *name, double count TSRMLS_DC);
 double  cycle_timer();
 zval * hp_hash_lookup(char *symbol  TSRMLS_DC);
 void hp_free_the_free_list();
-void profile_minit(TSRMLS_DC);
-void profile_mend(TSRMLS_DC);
-void profile_rend(TSRMLS_DC);
+void profile_minit(TSRMLS_D);
+void profile_mend(TSRMLS_D);
+void profile_rend(TSRMLS_D);
 
 
 

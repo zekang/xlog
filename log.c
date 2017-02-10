@@ -591,3 +591,4 @@ zend_bool rotate_file(const char *filename, int filename_len, int max TSRMLS_DC)
 	return  SUCCESS;
 }
 /* }}}*/
+

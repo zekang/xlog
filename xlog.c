@@ -126,7 +126,7 @@ ZEND_END_ARG_INFO()
 * @author kannan
 */
 PHP_FUNCTION(profile_enable) {
-	hp_begin( TSRMLS_CC);
+	hp_begin( TSRMLS_C);
 }
 
 /**
